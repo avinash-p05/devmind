@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://devmind:devmind@localhost:5432/devmind"
     redis_url: str = "redis://localhost:6379/0"
     api_cors_origins: str = "http://localhost:5173"
+    persistence_enabled: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 

@@ -1,15 +1,42 @@
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import FastAPI, status
+from fastapi import Depends, FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.schemas import Document, DocumentCreate, DocumentListResponse, HealthResponse
+from app.persistence.database import get_session, initialize_database
+from app.persistence.service import (
+    create_persisted_document,
+    list_persisted_documents,
+    search_persisted_documents,
+)
+from app.schemas import (
+    Document,
+    DocumentCreate,
+    DocumentListResponse,
+    HealthResponse,
+    SearchRequest,
+    SearchResponse,
+)
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if settings.persistence_enabled:
+        await initialize_database()
+    yield
+
+
 app = FastAPI(
-    title="DevMind API", version="0.1.0", description="Grounded incident intelligence API"
+    title="DevMind API",
+    version="0.1.0",
+    description="Grounded incident intelligence API",
+    lifespan=lifespan,
 )
 app.add_middleware(
     CORSMiddleware,
@@ -30,7 +57,12 @@ def health() -> HealthResponse:
 @app.post(
     "/documents", response_model=Document, status_code=status.HTTP_201_CREATED, tags=["documents"]
 )
-def create_document(payload: DocumentCreate) -> Document:
+async def create_document(
+    payload: DocumentCreate, session: AsyncSession = Depends(get_session)
+) -> Document:
+    if settings.persistence_enabled:
+        return await create_persisted_document(session, payload)
+
     document = Document(
         name=payload.name,
         source_type=payload.source_type,
@@ -44,6 +76,20 @@ def create_document(payload: DocumentCreate) -> Document:
 
 
 @app.get("/documents", response_model=DocumentListResponse, tags=["documents"])
-def list_documents() -> DocumentListResponse:
+async def list_documents(session: AsyncSession = Depends(get_session)) -> DocumentListResponse:
+    if settings.persistence_enabled:
+        items = await list_persisted_documents(session)
+        return DocumentListResponse(items=items, total=len(items))
+
     items = list(_documents.values())
     return DocumentListResponse(items=items, total=len(items))
+
+
+@app.post("/search", response_model=SearchResponse, tags=["retrieval"])
+async def search(
+    payload: SearchRequest, session: AsyncSession = Depends(get_session)
+) -> SearchResponse:
+    if not settings.persistence_enabled:
+        return SearchResponse(query=payload.query, results=[])
+    results = await search_persisted_documents(session, payload.query, payload.top_k)
+    return SearchResponse(query=payload.query, results=results)

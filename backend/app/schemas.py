@@ -39,3 +39,23 @@ class HealthResponse(BaseModel):
 class DocumentListResponse(BaseModel):
     items: list[Document]
     total: int
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=5, ge=1, le=20)
+
+
+class SearchResult(BaseModel):
+    chunk_id: UUID
+    document_id: UUID
+    document_name: str
+    content: str
+    score: float
+    rank: int
+    metadata: dict
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: list[SearchResult]

@@ -30,7 +30,15 @@ The API is available at `http://localhost:8000`. OpenAPI documentation is at `/d
 docker compose up -d postgres redis
 ```
 
-The first milestone exposes health and document contracts. Retrieval, ingestion workers, LangGraph orchestration, evaluation, and AWS deployment are added in subsequent milestones.
+The current milestone runs a Postgres-backed document ingestion path with deterministic local embeddings and pgvector semantic search. The API exposes `/health`, `/documents`, and `/search`. Retrieval reranking, ingestion workers, LangGraph orchestration, evaluation, and AWS deployment are added in subsequent milestones.
+
+To run the containerized stack:
+
+```powershell
+docker compose up -d --build --wait
+```
+
+Open `http://localhost:5173` for the UI or `http://localhost:8000/docs` for the API.
 
 ## Validation
 
