@@ -2,7 +2,7 @@ from dataclasses import asdict
 from hashlib import sha256
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -10,6 +10,7 @@ from app.domain.contracts import SourceMetadata
 from app.embeddings import embed_text
 from app.ingestion.text import chunk_text
 from app.persistence.models import ChunkRecord, DocumentRecord
+from app.retrieval.reranker import combine_scores
 from app.schemas import Document, DocumentCreate, SearchResult
 
 
@@ -60,29 +61,78 @@ async def list_persisted_documents(session: AsyncSession) -> list[Document]:
 
 
 async def search_persisted_documents(
-    session: AsyncSession, query: str, top_k: int
+    session: AsyncSession, query: str, top_k: int, mode: str = "hybrid"
 ) -> list[SearchResult]:
-    query_embedding = embed_text(query)
-    distance = ChunkRecord.embedding.cosine_distance(query_embedding).label("distance")
-    statement = (
-        select(ChunkRecord, DocumentRecord, distance)
-        .join(DocumentRecord, ChunkRecord.document_id == DocumentRecord.id)
-        .where(ChunkRecord.embedding.is_not(None))
-        .order_by(distance)
-        .limit(top_k)
-    )
-    result = await session.execute(statement)
+    candidates: dict[UUID, dict] = {}
+    if mode in {"semantic", "hybrid"}:
+        query_embedding = embed_text(query)
+        distance = ChunkRecord.embedding.cosine_distance(query_embedding).label("distance")
+        semantic_statement = (
+            select(ChunkRecord, DocumentRecord, distance)
+            .join(DocumentRecord, ChunkRecord.document_id == DocumentRecord.id)
+            .where(ChunkRecord.embedding.is_not(None))
+            .order_by(distance)
+            .limit(top_k * 3)
+        )
+        semantic_result = await session.execute(semantic_statement)
+        for chunk, document, distance_value in semantic_result.all():
+            candidates[chunk.id] = {
+                "chunk": chunk,
+                "document": document,
+                "semantic_score": max(0.0, 1 - float(distance_value)),
+                "keyword_score": None,
+            }
+
+    if mode in {"keyword", "hybrid"}:
+        document_vector = func.to_tsvector("simple", ChunkRecord.content)
+        query_vector = func.websearch_to_tsquery("simple", query)
+        keyword_score = func.ts_rank_cd(document_vector, query_vector).label("keyword_score")
+        keyword_statement = (
+            select(ChunkRecord, DocumentRecord, keyword_score)
+            .join(DocumentRecord, ChunkRecord.document_id == DocumentRecord.id)
+            .where(document_vector.op("@@")(query_vector))
+            .order_by(keyword_score.desc())
+            .limit(top_k * 3)
+        )
+        keyword_result = await session.execute(keyword_statement)
+        for chunk, document, score in keyword_result.all():
+            candidate = candidates.setdefault(
+                chunk.id,
+                {
+                    "chunk": chunk,
+                    "document": document,
+                    "semantic_score": None,
+                    "keyword_score": None,
+                },
+            )
+            candidate["keyword_score"] = min(1.0, float(score))
+
+    ranked = sorted(
+        candidates.values(),
+        key=lambda candidate: combine_scores(
+            candidate["semantic_score"], candidate["keyword_score"]
+        ),
+        reverse=True,
+    )[:top_k]
     return [
         SearchResult(
-            chunk_id=chunk.id,
-            document_id=document.id,
-            document_name=document.name,
-            content=chunk.content,
-            score=1 - float(distance_value),
+            chunk_id=candidate["chunk"].id,
+            document_id=candidate["document"].id,
+            document_name=candidate["document"].name,
+            content=candidate["chunk"].content,
+            score=combine_scores(candidate["semantic_score"], candidate["keyword_score"]),
             rank=rank,
-            metadata=chunk.metadata_json,
+            retrieval_method=(
+                "hybrid"
+                if candidate["semantic_score"] is not None
+                and candidate["keyword_score"] is not None
+                else "semantic"
+                if candidate["semantic_score"] is not None
+                else "keyword"
+            ),
+            metadata=candidate["chunk"].metadata_json,
         )
-        for rank, (chunk, document, distance_value) in enumerate(result.all(), start=1)
+        for rank, candidate in enumerate(ranked, start=1)
     ]
 
 

@@ -1,0 +1,57 @@
+{
+  "info": {
+    "name": "DevMind API",
+    "description": "Smoke and retrieval requests for the DevMind POC.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "documentName", "value": "postman-incident.md" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/health" }
+    },
+    {
+      "name": "Create incident document",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{documentName}}\",\n  \"source_type\": \"incident\",\n  \"content\": \"Payment deployment exhausted the database connection pool after rollout.\",\n  \"metadata\": {\"path\": \"incidents/{{documentName}}\", \"service\": \"payment-service\"}\n}" },
+        "url": "{{baseUrl}}/documents"
+      }
+    },
+    {
+      "name": "List documents",
+      "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/documents" }
+    },
+    {
+      "name": "Semantic search",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"query\": \"database connection exhaustion\",\n  \"mode\": \"semantic\",\n  \"top_k\": 5\n}" },
+        "url": "{{baseUrl}}/search"
+      }
+    },
+    {
+      "name": "Keyword search",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"query\": \"connection pool\",\n  \"mode\": \"keyword\",\n  \"top_k\": 5\n}" },
+        "url": "{{baseUrl}}/search"
+      }
+    },
+    {
+      "name": "Hybrid search",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"query\": \"Why did payment deployment fail?\",\n  \"mode\": \"hybrid\",\n  \"top_k\": 5\n}" },
+        "url": "{{baseUrl}}/search"
+      }
+    }
+  ]
+}

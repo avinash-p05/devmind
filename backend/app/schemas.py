@@ -44,6 +44,7 @@ class DocumentListResponse(BaseModel):
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1)
     top_k: int = Field(default=5, ge=1, le=20)
+    mode: str = Field(default="hybrid", pattern="^(semantic|keyword|hybrid)$")
 
 
 class SearchResult(BaseModel):
@@ -53,9 +54,11 @@ class SearchResult(BaseModel):
     content: str
     score: float
     rank: int
+    retrieval_method: str
     metadata: dict
 
 
 class SearchResponse(BaseModel):
     query: str
+    mode: str
     results: list[SearchResult]

@@ -90,6 +90,6 @@ async def search(
     payload: SearchRequest, session: AsyncSession = Depends(get_session)
 ) -> SearchResponse:
     if not settings.persistence_enabled:
-        return SearchResponse(query=payload.query, results=[])
-    results = await search_persisted_documents(session, payload.query, payload.top_k)
-    return SearchResponse(query=payload.query, results=results)
+        return SearchResponse(query=payload.query, mode=payload.mode, results=[])
+    results = await search_persisted_documents(session, payload.query, payload.top_k, payload.mode)
+    return SearchResponse(query=payload.query, mode=payload.mode, results=results)
