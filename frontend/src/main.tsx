@@ -15,6 +15,14 @@ type SearchResult = {
   metadata: Record<string, string>;
 };
 
+type ChatResponse = {
+  answer: string;
+  route: string;
+  confidence: string;
+  evidence_sufficient: boolean;
+  citations: Array<{ chunk_id: string; document_name: string; score: number }>;
+};
+
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 function App() {
@@ -25,6 +33,7 @@ function App() {
   const [sourceContent, setSourceContent] = useState("");
   const [message, setMessage] = useState("Ready for an engineering query");
   const [loading, setLoading] = useState(false);
+  const [assistant, setAssistant] = useState<ChatResponse | null>(null);
 
   async function runSearch(event?: FormEvent) {
     event?.preventDefault();
@@ -72,6 +81,26 @@ function App() {
     }
   }
 
+  async function askAssistant() {
+    setLoading(true);
+    setMessage("Routing question through the evidence graph...");
+    try {
+      const response = await fetch(`${apiBase}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, top_k: 5 }),
+      });
+      if (!response.ok) throw new Error(`Assistant failed (${response.status})`);
+      const data: ChatResponse = await response.json();
+      setAssistant(data);
+      setMessage(data.evidence_sufficient ? `Grounded via ${data.route}` : "Evidence is insufficient");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Assistant failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="shell">
       <section className="hero">
@@ -100,6 +129,12 @@ function App() {
               <button className={mode === option ? "active" : ""} key={option} onClick={() => setMode(option)} type="button">{option}</button>
             ))}
           </div>
+          <button className="assistant-button" disabled={loading || !query.trim()} onClick={askAssistant} type="button">Ask grounded assistant <span>↗</span></button>
+          {assistant && <div className="assistant-answer">
+            <div className="evidence-meta"><span>{assistant.route}</span><strong>{assistant.confidence} confidence</strong></div>
+            <p>{assistant.answer}</p>
+            <small>{assistant.citations.length} validated citation{assistant.citations.length === 1 ? "" : "s"}</small>
+          </div>}
           <div className="results" aria-live="polite">
             {results.length === 0 ? <p className="empty-state">No evidence selected yet. Search the indexed workspace.</p> : results.map((result) => (
               <article className="evidence" key={result.chunk_id}>

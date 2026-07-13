@@ -27,6 +27,10 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .mode-switch { display: flex; gap: 6px; margin: 14px 0 24px; }
 .mode-switch button { border-color: #496157; background: transparent; color: #9eafa4; padding: 9px 11px; }
 .mode-switch button.active { border-color: #c8e66d; color: #c8e66d; }
+.assistant-button { width: 100%; margin-bottom: 20px; }
+.assistant-answer { border: 1px solid #71977e; padding: 16px; margin-bottom: 20px; background: #20352d; }
+.assistant-answer p { line-height: 1.5; color: #e8efe7; }
+.assistant-answer small { color: #c8e66d; font: 11px 'DM Mono', monospace; text-transform: uppercase; }
 .results { display: grid; gap: 10px; }
 .empty-state { color: #789085; line-height: 1.5; }
 .evidence { border-left: 2px solid #71977e; background: #172722; padding: 14px 16px; }

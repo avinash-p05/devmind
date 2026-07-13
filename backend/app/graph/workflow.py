@@ -1,0 +1,94 @@
+import re
+
+from langgraph.graph import END, START, StateGraph
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.graph.state import AgentState
+from app.graph.tools import code_search_tool, hybrid_retrieval_tool
+from app.schemas import ChatResponse, Citation
+
+CODE_QUERY = re.compile(
+    r"\b(where|which|how|function|class|method|implemented|defined|file|source|repository)\b|[/\\]"
+)
+
+
+def _analyze_query(state: AgentState) -> AgentState:
+    state["route"] = "code_search" if CODE_QUERY.search(state["query"]) else "hybrid_retrieval"
+    return state
+
+
+def _retrieve(session: AsyncSession):
+    async def retrieve(state: AgentState) -> AgentState:
+        if state["route"] == "code_search":
+            state["evidence"] = await code_search_tool(session, state["query"], state["top_k"])
+        else:
+            state["evidence"] = await hybrid_retrieval_tool(
+                session, state["query"], state["top_k"]
+            )
+        return state
+
+    return retrieve
+
+
+def _generate_answer(state: AgentState) -> AgentState:
+    evidence = state.get("evidence", [])
+    state["evidence_sufficient"] = bool(evidence)
+    if not evidence:
+        state["answer"] = (
+            "I could not find supporting evidence in the indexed workspace. "
+            "Add the relevant source or refine the question."
+        )
+        state["citations"] = []
+        return state
+
+    lead = evidence[0]
+    state["answer"] = (
+        f"The strongest indexed evidence for this question is in {lead.document_name}. "
+        f"It indicates: {lead.content}"
+    )
+    state["citations"] = [
+        Citation(
+            chunk_id=result.chunk_id,
+            document_name=result.document_name,
+            score=result.score,
+            metadata=result.metadata,
+        )
+        for result in evidence[:3]
+    ]
+    return state
+
+
+def _validate_citations(state: AgentState) -> AgentState:
+    evidence_ids = {result.chunk_id for result in state.get("evidence", [])}
+    state["citations"] = [
+        citation for citation in state.get("citations", []) if citation.chunk_id in evidence_ids
+    ]
+    if state.get("evidence_sufficient") and not state["citations"]:
+        state["evidence_sufficient"] = False
+    return state
+
+
+def build_agent_graph(session: AsyncSession):
+    graph = StateGraph(AgentState)
+    graph.add_node("analyze_query", _analyze_query)
+    graph.add_node("retrieve", _retrieve(session))
+    graph.add_node("generate_answer", _generate_answer)
+    graph.add_node("validate_citations", _validate_citations)
+    graph.add_edge(START, "analyze_query")
+    graph.add_edge("analyze_query", "retrieve")
+    graph.add_edge("retrieve", "generate_answer")
+    graph.add_edge("generate_answer", "validate_citations")
+    graph.add_edge("validate_citations", END)
+    return graph.compile()
+
+
+async def answer_question(session: AsyncSession, query: str, top_k: int) -> ChatResponse:
+    result = await build_agent_graph(session).ainvoke({"query": query, "top_k": top_k})
+    return ChatResponse(
+        query=query,
+        answer=result["answer"],
+        route=result["route"],
+        confidence="medium" if result["evidence_sufficient"] else "low",
+        evidence_sufficient=result["evidence_sufficient"],
+        citations=result["citations"],
+    )

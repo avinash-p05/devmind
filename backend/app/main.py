@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.graph.workflow import answer_question
 from app.persistence.database import get_session, initialize_database
 from app.persistence.service import (
     create_persisted_document,
@@ -14,6 +15,8 @@ from app.persistence.service import (
     search_persisted_documents,
 )
 from app.schemas import (
+    ChatRequest,
+    ChatResponse,
     Document,
     DocumentCreate,
     DocumentListResponse,
@@ -93,3 +96,19 @@ async def search(
         return SearchResponse(query=payload.query, mode=payload.mode, results=[])
     results = await search_persisted_documents(session, payload.query, payload.top_k, payload.mode)
     return SearchResponse(query=payload.query, mode=payload.mode, results=results)
+
+
+@app.post("/chat", response_model=ChatResponse, tags=["agent"])
+async def chat(
+    payload: ChatRequest, session: AsyncSession = Depends(get_session)
+) -> ChatResponse:
+    if not settings.persistence_enabled:
+        return ChatResponse(
+            query=payload.query,
+            answer="Persistence is disabled; start the Docker stack to use the agent.",
+            route="unavailable",
+            confidence="low",
+            evidence_sufficient=False,
+            citations=[],
+        )
+    return await answer_question(session, payload.query, payload.top_k)

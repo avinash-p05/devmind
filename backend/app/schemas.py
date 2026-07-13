@@ -62,3 +62,24 @@ class SearchResponse(BaseModel):
     query: str
     mode: str
     results: list[SearchResult]
+
+
+class ChatRequest(BaseModel):
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=5, ge=1, le=10)
+
+
+class Citation(BaseModel):
+    chunk_id: UUID
+    document_name: str
+    score: float
+    metadata: dict
+
+
+class ChatResponse(BaseModel):
+    query: str
+    answer: str
+    route: str
+    confidence: str
+    evidence_sufficient: bool
+    citations: list[Citation]

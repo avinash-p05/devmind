@@ -52,6 +52,15 @@
         "body": { "mode": "raw", "raw": "{\n  \"query\": \"Why did payment deployment fail?\",\n  \"mode\": \"hybrid\",\n  \"top_k\": 5\n}" },
         "url": "{{baseUrl}}/search"
       }
+    },
+    {
+      "name": "Grounded assistant chat",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"query\": \"Why did the payment service fail after deployment?\",\n  \"top_k\": 5\n}" },
+        "url": "{{baseUrl}}/chat"
+      }
     }
   ]
 }
