@@ -39,3 +39,14 @@ class ChunkRecord(Base):
     metadata_json: Mapped[dict] = mapped_column("metadata", JSONB, default=dict, nullable=False)
     embedding: Mapped[list[float] | None] = mapped_column(VECTOR(1536))
     document: Mapped[DocumentRecord] = relationship(back_populates="chunks")
+
+
+class IncidentRecord(Base):
+    __tablename__ = "incidents"
+
+    id: Mapped[UUID] = mapped_column(PostgresUUID(as_uuid=True), primary_key=True, default=uuid4)
+    service: Mapped[str] = mapped_column(String(120), nullable=False)
+    severity: Mapped[str] = mapped_column(String(32), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    analysis_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

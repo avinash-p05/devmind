@@ -30,7 +30,7 @@ The API is available at `http://localhost:8000`. OpenAPI documentation is at `/d
 docker compose up -d postgres redis
 ```
 
-The current milestone runs a Postgres-backed document ingestion path with deterministic local embeddings, pgvector hybrid search, and a LangGraph-backed grounded assistant. The API exposes `/health`, `/documents`, `/search`, and `/chat`. Ingestion workers, evaluation, and AWS deployment are added in subsequent milestones.
+The current milestone runs a Postgres-backed document ingestion path with deterministic local embeddings, pgvector hybrid search, a LangGraph-backed grounded assistant, and structured incident analysis. The API exposes `/health`, `/documents`, `/search`, `/chat`, and `/incidents/analyze`. Ingestion workers, evaluation, and AWS deployment are added in subsequent milestones.
 
 To run the containerized stack:
 

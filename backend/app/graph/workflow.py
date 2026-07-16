@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.graph.state import AgentState
 from app.graph.tools import code_search_tool, hybrid_retrieval_tool
-from app.schemas import ChatResponse, Citation
+from app.schemas import ChatResponse, Citation, IncidentAnalysis, IncidentAnalyzeRequest
 
 CODE_QUERY = re.compile(
     r"\b(where|which|how|function|class|method|implemented|defined|file|source|repository)\b|[/\\]"
@@ -91,4 +91,40 @@ async def answer_question(session: AsyncSession, query: str, top_k: int) -> Chat
         confidence="medium" if result["evidence_sufficient"] else "low",
         evidence_sufficient=result["evidence_sufficient"],
         citations=result["citations"],
+    )
+
+
+async def analyze_incident(
+    session: AsyncSession, request: IncidentAnalyzeRequest
+) -> IncidentAnalysis:
+    query = f"{request.service} {request.query}"
+    result = await build_agent_graph(session).ainvoke({"query": query, "top_k": request.top_k})
+    citations = result["citations"]
+    if citations:
+        root_cause = result["evidence"][0].content
+        affected_component = request.service
+        next_steps = [
+            f"Inspect the latest {request.service} deployment and configuration changes.",
+            "Compare the cited evidence with application and infrastructure metrics.",
+            "Reproduce the failure in a controlled environment before rollout.",
+        ]
+        unresolved = []
+    else:
+        root_cause = "No supporting evidence was found for a reliable root-cause hypothesis."
+        affected_component = request.service
+        next_steps = [
+            f"Index logs, traces, and deployment details for {request.service}.",
+            "Refine the incident window and failure symptoms.",
+        ]
+        unresolved = ["Which deployment, log window, and component should be correlated?"]
+    return IncidentAnalysis(
+        service=request.service,
+        severity=request.severity,
+        root_cause_hypothesis=root_cause,
+        evidence=citations,
+        affected_component=affected_component,
+        recommended_next_steps=next_steps,
+        confidence="medium" if citations else "low",
+        route=result["route"],
+        unresolved_questions=unresolved,
     )

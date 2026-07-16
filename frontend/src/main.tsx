@@ -23,6 +23,18 @@ type ChatResponse = {
   citations: Array<{ chunk_id: string; document_name: string; score: number }>;
 };
 
+type IncidentAnalysis = {
+  service: string;
+  severity: string;
+  root_cause_hypothesis: string;
+  evidence: Array<{ document_name: string; score: number }>;
+  affected_component: string;
+  recommended_next_steps: string[];
+  confidence: string;
+  route: string;
+  unresolved_questions: string[];
+};
+
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 function App() {
@@ -34,6 +46,10 @@ function App() {
   const [message, setMessage] = useState("Ready for an engineering query");
   const [loading, setLoading] = useState(false);
   const [assistant, setAssistant] = useState<ChatResponse | null>(null);
+  const [incidentService, setIncidentService] = useState("payment-service");
+  const [incidentSeverity, setIncidentSeverity] = useState("high");
+  const [incidentQuery, setIncidentQuery] = useState("Why did the payment service fail after deployment?");
+  const [incident, setIncident] = useState<IncidentAnalysis | null>(null);
 
   async function runSearch(event?: FormEvent) {
     event?.preventDefault();
@@ -101,6 +117,26 @@ function App() {
     }
   }
 
+  async function analyzeIncident() {
+    setLoading(true);
+    setMessage("Analyzing incident evidence...");
+    try {
+      const response = await fetch(`${apiBase}/incidents/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: incidentQuery, service: incidentService, severity: incidentSeverity, top_k: 5 }),
+      });
+      if (!response.ok) throw new Error(`Incident analysis failed (${response.status})`);
+      const data: IncidentAnalysis = await response.json();
+      setIncident(data);
+      setMessage(`${data.confidence} confidence incident analysis ready`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Incident analysis failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="shell">
       <section className="hero">
@@ -116,6 +152,21 @@ function App() {
           <label>Source name<input value={sourceName} onChange={(event) => setSourceName(event.target.value)} /></label>
           <label>Incident or engineering text<textarea value={sourceContent} onChange={(event) => setSourceContent(event.target.value)} required placeholder="Paste a postmortem, stack trace, or runbook excerpt..." /></label>
           <button disabled={loading || !sourceContent.trim()} type="submit">Index source <span>↗</span></button>
+          <div className="incident-tool">
+            <p className="eyebrow">03 · ANALYZE INCIDENT</p>
+            <label>Service<input value={incidentService} onChange={(event) => setIncidentService(event.target.value)} /></label>
+            <label>Severity<select value={incidentSeverity} onChange={(event) => setIncidentSeverity(event.target.value)}><option>critical</option><option>high</option><option>medium</option><option>low</option></select></label>
+            <label>Question<textarea value={incidentQuery} onChange={(event) => setIncidentQuery(event.target.value)} /></label>
+            <button disabled={loading || !incidentQuery.trim()} onClick={analyzeIncident} type="button">Analyze incident <span>↗</span></button>
+            {incident && <div className="incident-result">
+              <div className="evidence-meta"><span>{incident.route}</span><strong>{incident.confidence} confidence</strong></div>
+              <h3>Root-cause hypothesis</h3>
+              <p>{incident.root_cause_hypothesis}</p>
+              <h3>Recommended next steps</h3>
+              <ul>{incident.recommended_next_steps.map((step) => <li key={step}>{step}</li>)}</ul>
+              <small>{incident.evidence.length} supporting evidence item{incident.evidence.length === 1 ? "" : "s"}</small>
+            </div>}
+          </div>
         </form>
         <section className="tool-panel search-panel">
           <p className="eyebrow">02 · RETRIEVE EVIDENCE</p>

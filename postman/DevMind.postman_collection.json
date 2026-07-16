@@ -61,6 +61,15 @@
         "body": { "mode": "raw", "raw": "{\n  \"query\": \"Why did the payment service fail after deployment?\",\n  \"top_k\": 5\n}" },
         "url": "{{baseUrl}}/chat"
       }
+    },
+    {
+      "name": "Analyze incident",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"query\": \"Why did the payment service fail after deployment?\",\n  \"service\": \"payment-service\",\n  \"severity\": \"high\",\n  \"top_k\": 5\n}" },
+        "url": "{{baseUrl}}/incidents/analyze"
+      }
     }
   ]
 }

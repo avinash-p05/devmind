@@ -83,3 +83,23 @@ class ChatResponse(BaseModel):
     confidence: str
     evidence_sufficient: bool
     citations: list[Citation]
+
+
+class IncidentAnalyzeRequest(BaseModel):
+    query: str = Field(min_length=1)
+    service: str = Field(min_length=1, max_length=120)
+    severity: str = Field(default="unknown", max_length=32)
+    top_k: int = Field(default=5, ge=1, le=10)
+
+
+class IncidentAnalysis(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
+    service: str
+    severity: str
+    root_cause_hypothesis: str
+    evidence: list[Citation]
+    affected_component: str
+    recommended_next_steps: list[str]
+    confidence: str
+    route: str
+    unresolved_questions: list[str]

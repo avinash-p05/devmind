@@ -7,11 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.graph.workflow import answer_question
+from app.graph.workflow import analyze_incident, answer_question
 from app.persistence.database import get_session, initialize_database
 from app.persistence.service import (
     create_persisted_document,
     list_persisted_documents,
+    save_incident_analysis,
     search_persisted_documents,
 )
 from app.schemas import (
@@ -21,6 +22,8 @@ from app.schemas import (
     DocumentCreate,
     DocumentListResponse,
     HealthResponse,
+    IncidentAnalysis,
+    IncidentAnalyzeRequest,
     SearchRequest,
     SearchResponse,
 )
@@ -112,3 +115,25 @@ async def chat(
             citations=[],
         )
     return await answer_question(session, payload.query, payload.top_k)
+
+
+@app.post("/incidents/analyze", response_model=IncidentAnalysis, tags=["incidents"])
+async def analyze_incident_route(
+    payload: IncidentAnalyzeRequest, session: AsyncSession = Depends(get_session)
+) -> IncidentAnalysis:
+    if not settings.persistence_enabled:
+        return IncidentAnalysis(
+            service=payload.service,
+            severity=payload.severity,
+            root_cause_hypothesis=(
+                "Persistence is disabled; start the Docker stack to analyze incidents."
+            ),
+            evidence=[],
+            affected_component=payload.service,
+            recommended_next_steps=[],
+            confidence="low",
+            route="unavailable",
+            unresolved_questions=["Start the persistent application environment."],
+        )
+    analysis = await analyze_incident(session, payload)
+    return await save_incident_analysis(session, analysis)

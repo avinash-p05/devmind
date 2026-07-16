@@ -9,9 +9,9 @@ from sqlalchemy.orm import selectinload
 from app.domain.contracts import SourceMetadata
 from app.embeddings import embed_text
 from app.ingestion.text import chunk_text
-from app.persistence.models import ChunkRecord, DocumentRecord
+from app.persistence.models import ChunkRecord, DocumentRecord, IncidentRecord
 from app.retrieval.reranker import combine_scores
-from app.schemas import Document, DocumentCreate, SearchResult
+from app.schemas import Document, DocumentCreate, IncidentAnalysis, SearchResult
 
 
 def _chunk_uuid(chunk_id: str) -> UUID:
@@ -148,3 +148,18 @@ def _to_document(document: DocumentRecord, content_length: int | None = None) ->
         content_length=content_length,
         created_at=document.created_at,
     )
+
+
+async def save_incident_analysis(
+    session: AsyncSession, analysis: IncidentAnalysis
+) -> IncidentAnalysis:
+    record = IncidentRecord(
+        id=analysis.id,
+        service=analysis.service,
+        severity=analysis.severity,
+        summary=analysis.root_cause_hypothesis,
+        analysis_json=analysis.model_dump(mode="json"),
+    )
+    session.add(record)
+    await session.commit()
+    return analysis

@@ -16,11 +16,17 @@ h1 { font-size: clamp(64px, 13vw, 166px); line-height: .86; letter-spacing: -.07
 h2 { margin: 0 0 24px; font-size: clamp(28px, 4vw, 48px); letter-spacing: -.04em; line-height: 1; }
 label { display: grid; gap: 8px; color: #9eafa4; font: 500 11px 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; margin-top: 20px; }
 input, textarea { width: 100%; border: 1px solid #496157; background: #172722; color: #e8efe7; padding: 13px; font: 15px 'Space Grotesk', sans-serif; outline: none; }
+select { width: 100%; border: 1px solid #496157; background: #172722; color: #e8efe7; padding: 13px; font: 15px 'Space Grotesk', sans-serif; outline: none; }
 textarea { min-height: 160px; resize: vertical; line-height: 1.45; }
 input:focus, textarea:focus { border-color: #c8e66d; }
 button { border: 1px solid #c8e66d; background: #c8e66d; color: #101b18; padding: 12px 16px; font: 600 12px 'DM Mono', monospace; text-transform: uppercase; cursor: pointer; }
 button:disabled { opacity: .45; cursor: not-allowed; }
 .tool-panel > button { margin-top: 20px; }
+.incident-tool { border-top: 1px solid #496157; margin-top: 32px; padding-top: 28px; }
+.incident-result { margin-top: 20px; padding: 16px; background: #20352d; border-left: 2px solid #c8e66d; }
+.incident-result h3 { font-size: 14px; margin: 14px 0 6px; }
+.incident-result p, .incident-result li { color: #b6c5bb; line-height: 1.45; }
+.incident-result ul { padding-left: 18px; margin-bottom: 14px; }
 .tool-panel button span { font-size: 18px; vertical-align: -2px; }
 .search-form { display: flex; gap: 8px; }
 .search-form input { flex: 1; }
