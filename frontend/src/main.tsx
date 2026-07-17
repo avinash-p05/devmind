@@ -35,6 +35,15 @@ type IncidentAnalysis = {
   unresolved_questions: string[];
 };
 
+type EvaluationRun = {
+  id: string;
+  dataset_version: string;
+  mode: string;
+  status: string;
+  summary: Record<string, number>;
+  results: Array<{ question: string; retrieval_recall: number; citation_accurate: boolean; latency_ms: number }>;
+};
+
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 function App() {
@@ -50,6 +59,7 @@ function App() {
   const [incidentSeverity, setIncidentSeverity] = useState("high");
   const [incidentQuery, setIncidentQuery] = useState("Why did the payment service fail after deployment?");
   const [incident, setIncident] = useState<IncidentAnalysis | null>(null);
+  const [evaluation, setEvaluation] = useState<EvaluationRun | null>(null);
 
   async function runSearch(event?: FormEvent) {
     event?.preventDefault();
@@ -137,6 +147,26 @@ function App() {
     }
   }
 
+  async function runEvaluation() {
+    setLoading(true);
+    setMessage("Running evaluation dataset...");
+    try {
+      const response = await fetch(`${apiBase}/evaluations/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataset_version: "v1", mode: "hybrid", top_k: 5 }),
+      });
+      if (!response.ok) throw new Error(`Evaluation failed (${response.status})`);
+      const data: EvaluationRun = await response.json();
+      setEvaluation(data);
+      setMessage(`${data.summary.case_count ?? 0} evaluation cases completed`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Evaluation failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="shell">
       <section className="hero">
@@ -196,6 +226,20 @@ function App() {
             ))}
           </div>
         </section>
+      </section>
+      <section className="evaluation-panel">
+        <div>
+          <p className="eyebrow">04 · EVALUATION</p>
+          <h2>Measure the evidence.</h2>
+          <p className="panel-copy">Run the versioned benchmark against the current hybrid retriever and inspect the cases that need better coverage.</p>
+        </div>
+        <button disabled={loading} onClick={runEvaluation} type="button">Run v1 benchmark <span>↗</span></button>
+        {evaluation && <div className="evaluation-summary">
+          <div><strong>{evaluation.summary.case_count ?? 0}</strong><span>cases</span></div>
+          <div><strong>{Math.round((evaluation.summary.recall_at_k ?? 0) * 100)}%</strong><span>recall@5</span></div>
+          <div><strong>{Math.round((evaluation.summary.citation_accuracy ?? 0) * 100)}%</strong><span>citation accuracy</span></div>
+          <div><strong>{Math.round(evaluation.summary.avg_latency_ms ?? 0)}ms</strong><span>avg latency</span></div>
+        </div>}
       </section>
     </main>
   );

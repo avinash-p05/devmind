@@ -6,7 +6,8 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8000" },
-    { "key": "documentName", "value": "postman-incident.md" }
+    { "key": "documentName", "value": "postman-incident.md" },
+    { "key": "runId", "value": "replace-with-evaluation-run-id" }
   ],
   "item": [
     {
@@ -69,6 +70,23 @@
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": { "mode": "raw", "raw": "{\n  \"query\": \"Why did the payment service fail after deployment?\",\n  \"service\": \"payment-service\",\n  \"severity\": \"high\",\n  \"top_k\": 5\n}" },
         "url": "{{baseUrl}}/incidents/analyze"
+      }
+    },
+    {
+      "name": "Run evaluation",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"dataset_version\": \"v1\",\n  \"mode\": \"hybrid\",\n  \"top_k\": 5\n}" },
+        "url": "{{baseUrl}}/evaluations/run"
+      }
+    },
+    {
+      "name": "Get evaluation run",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/evaluations/{{runId}}"
       }
     }
   ]

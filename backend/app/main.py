@@ -2,11 +2,12 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, status
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.evaluation import get_evaluation, run_evaluation
 from app.graph.workflow import analyze_incident, answer_question
 from app.persistence.database import get_session, initialize_database
 from app.persistence.service import (
@@ -21,6 +22,8 @@ from app.schemas import (
     Document,
     DocumentCreate,
     DocumentListResponse,
+    EvaluationRunRequest,
+    EvaluationRunResponse,
     HealthResponse,
     IncidentAnalysis,
     IncidentAnalyzeRequest,
@@ -137,3 +140,22 @@ async def analyze_incident_route(
         )
     analysis = await analyze_incident(session, payload)
     return await save_incident_analysis(session, analysis)
+
+
+@app.post("/evaluations/run", response_model=EvaluationRunResponse, tags=["evaluations"])
+async def start_evaluation(
+    payload: EvaluationRunRequest, session: AsyncSession = Depends(get_session)
+) -> EvaluationRunResponse:
+    if not settings.persistence_enabled:
+        raise HTTPException(status_code=503, detail="Persistence is required for evaluations")
+    return await run_evaluation(session, payload)
+
+
+@app.get("/evaluations/{run_id}", response_model=EvaluationRunResponse, tags=["evaluations"])
+async def read_evaluation(
+    run_id: UUID, session: AsyncSession = Depends(get_session)
+) -> EvaluationRunResponse:
+    evaluation = await get_evaluation(session, run_id)
+    if evaluation is None:
+        raise HTTPException(status_code=404, detail="Evaluation run not found")
+    return evaluation

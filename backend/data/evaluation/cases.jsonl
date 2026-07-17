@@ -1,0 +1,12 @@
+{"question":"Where is OAuth redirect validation implemented?","expected_sources":["docs/oauth.md","src/auth/redirect.ts"],"key_facts":["redirect URI is validated before token exchange"]}
+{"question":"Why did the payment service fail after deployment?","expected_sources":["phase2-fixed.md","incidents/payment-incident.md"],"key_facts":["connection pool exhausted"]}
+{"question":"Which component owns database connection pooling?","expected_sources":["src/db/pool.py"],"key_facts":["connection pool"]}
+{"question":"Where is retry backoff configured?","expected_sources":["config/retries.yaml"],"key_facts":["retry backoff"]}
+{"question":"What caused the checkout timeout?","expected_sources":["incidents/checkout-timeout.md"],"key_facts":["timeout"]}
+{"question":"Which service emitted the deployment error?","expected_sources":["logs/payment-service.log"],"key_facts":["payment-service"]}
+{"question":"Where is incident severity normalized?","expected_sources":["src/incidents/severity.py"],"key_facts":["severity"]}
+{"question":"How is the database pool size selected?","expected_sources":["docs/database.md"],"key_facts":["pool size"]}
+{"question":"What evidence supports the rollback recommendation?","expected_sources":["postmortems/payment.md"],"key_facts":["rollback"]}
+{"question":"Where is the health endpoint registered?","expected_sources":["backend/app/main.py"],"key_facts":["health"]}
+{"question":"Which configuration controls request timeout?","expected_sources":["config/service.yaml"],"key_facts":["request timeout"]}
+{"question":"What changed in the latest deployment?","expected_sources":["deployments/release-notes.md"],"key_facts":["deployment"]}

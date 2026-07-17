@@ -103,3 +103,19 @@ class IncidentAnalysis(BaseModel):
     confidence: str
     route: str
     unresolved_questions: list[str]
+
+
+class EvaluationRunRequest(BaseModel):
+    dataset_version: str = Field(default="v1")
+    mode: str = Field(default="hybrid", pattern="^(semantic|keyword|hybrid)$")
+    top_k: int = Field(default=5, ge=1, le=20)
+
+
+class EvaluationRunResponse(BaseModel):
+    id: UUID
+    dataset_version: str
+    mode: str
+    status: str
+    summary: dict
+    results: list[dict]
+    created_at: datetime
