@@ -50,6 +50,21 @@ services:
       timeout: 5s
       retries: 10
 
+  worker:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment:
+      APP_ENV: docker
+      DATABASE_URL: postgresql+asyncpg://devmind:devmind@postgres:5432/devmind
+      REDIS_URL: redis://redis:6379/0
+      PERSISTENCE_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend

@@ -44,6 +44,13 @@ type EvaluationRun = {
   results: Array<{ question: string; retrieval_recall: number; citation_accurate: boolean; latency_ms: number }>;
 };
 
+type IngestionJob = {
+  id: string;
+  status: string;
+  document_id?: string;
+  error?: string;
+};
+
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 function App() {
@@ -87,7 +94,7 @@ function App() {
     setLoading(true);
     setMessage("Indexing source...");
     try {
-      const response = await fetch(`${apiBase}/documents`, {
+      const response = await fetch(`${apiBase}/ingestions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -98,6 +105,22 @@ function App() {
         }),
       });
       if (!response.ok) throw new Error(`Indexing failed (${response.status})`);
+      const job: IngestionJob = await response.json();
+      let current = job;
+      for (let attempt = 0; attempt < 20 && current.status === "queued"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const statusResponse = await fetch(`${apiBase}/ingestions/${job.id}`);
+        if (!statusResponse.ok) throw new Error(`Ingestion status failed (${statusResponse.status})`);
+        current = await statusResponse.json();
+      }
+      if (current.status === "processing") {
+        for (let attempt = 0; attempt < 20 && current.status === "processing"; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          const statusResponse = await fetch(`${apiBase}/ingestions/${job.id}`);
+          current = await statusResponse.json();
+        }
+      }
+      if (current.status !== "completed") throw new Error(current.error ?? "Ingestion did not complete");
       setSourceContent("");
       setMessage(`${sourceName} indexed successfully`);
     } catch (error) {

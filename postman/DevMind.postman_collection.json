@@ -7,7 +7,8 @@
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8000" },
     { "key": "documentName", "value": "postman-incident.md" },
-    { "key": "runId", "value": "replace-with-evaluation-run-id" }
+    { "key": "runId", "value": "replace-with-evaluation-run-id" },
+    { "key": "ingestionJobId", "value": "replace-with-ingestion-job-id" }
   ],
   "item": [
     {
@@ -26,6 +27,23 @@
     {
       "name": "List documents",
       "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/documents" }
+    },
+    {
+      "name": "Queue ingestion",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"queued-incident.md\",\n  \"source_type\": \"incident\",\n  \"content\": \"The worker processed this incident asynchronously.\",\n  \"metadata\": {\"path\": \"incidents/queued-incident.md\", \"service\": \"payment-service\"}\n}" },
+        "url": "{{baseUrl}}/ingestions"
+      }
+    },
+    {
+      "name": "Get ingestion status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/ingestions/{{ingestionJobId}}"
+      }
     },
     {
       "name": "Semantic search",

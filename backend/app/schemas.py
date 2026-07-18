@@ -119,3 +119,10 @@ class EvaluationRunResponse(BaseModel):
     summary: dict
     results: list[dict]
     created_at: datetime
+
+
+class IngestionJobResponse(BaseModel):
+    id: UUID
+    status: str
+    document_id: UUID | None = None
+    error: str | None = None

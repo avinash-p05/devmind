@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.evaluation import get_evaluation, run_evaluation
 from app.graph.workflow import analyze_incident, answer_question
+from app.ingestion.queue import enqueue_ingestion, get_ingestion_job
 from app.persistence.database import get_session, initialize_database
 from app.persistence.service import (
     create_persisted_document,
@@ -27,6 +28,7 @@ from app.schemas import (
     HealthResponse,
     IncidentAnalysis,
     IncidentAnalyzeRequest,
+    IngestionJobResponse,
     SearchRequest,
     SearchResponse,
 )
@@ -82,6 +84,26 @@ async def create_document(
     )
     _documents[document.id] = document
     return document
+
+
+@app.post(
+    "/ingestions",
+    response_model=IngestionJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["ingestion"],
+)
+async def enqueue_document(payload: DocumentCreate) -> IngestionJobResponse:
+    if not settings.persistence_enabled:
+        raise HTTPException(status_code=503, detail="Persistence is required for queued ingestion")
+    return await enqueue_ingestion(payload)
+
+
+@app.get("/ingestions/{job_id}", response_model=IngestionJobResponse, tags=["ingestion"])
+async def read_ingestion(job_id: UUID) -> IngestionJobResponse:
+    job = await get_ingestion_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Ingestion job not found")
+    return job
 
 
 @app.get("/documents", response_model=DocumentListResponse, tags=["documents"])
