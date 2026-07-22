@@ -8,10 +8,8 @@ DevMind is an incident intelligence platform for grounded engineering answers ac
 
 ```powershell
 cd backend
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-uvicorn app.main:app --reload
+uv sync --extra dev
+uv run uvicorn app.main:app --reload
 ```
 
 ### Frontend
@@ -30,7 +28,7 @@ The API is available at `http://localhost:8000`. OpenAPI documentation is at `/d
 docker compose up -d postgres redis
 ```
 
-The current milestone runs a Postgres-backed document ingestion path with deterministic local embeddings, pgvector hybrid search, a Redis-backed ingestion worker, a LangGraph-backed grounded assistant, structured incident analysis, and a versioned evaluation runner. The API exposes `/health`, `/documents`, `/ingestions`, `/ingestions/{job_id}`, `/search`, `/chat`, `/incidents/analyze`, `/evaluations/run`, and `/evaluations/{run_id}`. AWS deployment is added in a subsequent milestone.
+The current milestone runs a Postgres-backed document ingestion path with format-aware parsing for text, HTML, PDF, logs, incidents, and repository snapshots; deterministic local embeddings; pgvector hybrid search; a Redis-backed ingestion worker; a LangGraph-backed grounded assistant; structured incident analysis; and a versioned evaluation runner. The API exposes `/health`, `/documents`, `/ingestions`, `/ingestions/{job_id}`, `/search`, `/chat`, `/incidents/analyze`, `/evaluations/run`, and `/evaluations/{run_id}`. AWS deployment is added in a subsequent milestone.
 
 To run the containerized stack:
 
@@ -44,6 +42,6 @@ Open `http://localhost:5173` for the UI or `http://localhost:8000/docs` for the 
 
 ```powershell
 cd backend
-pytest
-ruff check .
+uv run --extra dev pytest
+uv run --extra dev ruff check .
 ```
