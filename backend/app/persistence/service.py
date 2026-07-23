@@ -10,7 +10,7 @@ from app.domain.contracts import SourceMetadata
 from app.embeddings import embed_text
 from app.ingestion.text import chunk_text
 from app.persistence.models import ChunkRecord, DocumentRecord, IncidentRecord
-from app.retrieval.reranker import combine_scores
+from app.retrieval.reranker import reciprocal_rank_fusion
 from app.schemas import Document, DocumentCreate, IncidentAnalysis, SearchResult
 
 
@@ -79,7 +79,9 @@ async def search_persisted_documents(
             candidates[chunk.id] = {
                 "chunk": chunk,
                 "document": document,
+                "semantic_rank": len(candidates) + 1,
                 "semantic_score": max(0.0, 1 - float(distance_value)),
+                "keyword_rank": None,
                 "keyword_score": None,
             }
 
@@ -101,16 +103,22 @@ async def search_persisted_documents(
                 {
                     "chunk": chunk,
                     "document": document,
+                    "semantic_rank": None,
                     "semantic_score": None,
+                    "keyword_rank": None,
                     "keyword_score": None,
                 },
             )
+            if candidate["keyword_rank"] is None:
+                candidate["keyword_rank"] = len(
+                    [item for item in candidates.values() if item["keyword_rank"] is not None]
+                ) + 1
             candidate["keyword_score"] = min(1.0, float(score))
 
     ranked = sorted(
         candidates.values(),
-        key=lambda candidate: combine_scores(
-            candidate["semantic_score"], candidate["keyword_score"]
+        key=lambda candidate: reciprocal_rank_fusion(
+            candidate["semantic_rank"], candidate["keyword_rank"]
         ),
         reverse=True,
     )[:top_k]
@@ -120,7 +128,9 @@ async def search_persisted_documents(
             document_id=candidate["document"].id,
             document_name=candidate["document"].name,
             content=candidate["chunk"].content,
-            score=combine_scores(candidate["semantic_score"], candidate["keyword_score"]),
+            score=reciprocal_rank_fusion(
+                candidate["semantic_rank"], candidate["keyword_rank"]
+            ),
             rank=rank,
             retrieval_method=(
                 "hybrid"
