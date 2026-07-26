@@ -10,24 +10,47 @@ from app.schemas import ChatResponse, Citation, IncidentAnalysis, IncidentAnalyz
 CODE_QUERY = re.compile(
     r"\b(where|which|how|function|class|method|implemented|defined|file|source|repository)\b|[/\\]"
 )
+INCIDENT_QUERY = re.compile(
+    r"\b(incident|failure|failed|outage|root cause|stack trace|error|timeout|rollback)\b",
+    re.IGNORECASE,
+)
+LOG_QUERY = re.compile(r"\b(log|logs|trace|request id|exception)\b", re.IGNORECASE)
 
 
 def _analyze_query(state: AgentState) -> AgentState:
-    state["route"] = "code_search" if CODE_QUERY.search(state["query"]) else "hybrid_retrieval"
+    query = state["query"]
+    if CODE_QUERY.search(query):
+        state["route"] = "code_search"
+    elif INCIDENT_QUERY.search(query):
+        state["route"] = "incident_analysis"
+    elif LOG_QUERY.search(query):
+        state["route"] = "log_search"
+    else:
+        state["route"] = "hybrid_retrieval"
+    state["retrieval_attempts"] = 0
     return state
 
 
 def _retrieve(session: AsyncSession):
     async def retrieve(state: AgentState) -> AgentState:
+        state["retrieval_attempts"] = state.get("retrieval_attempts", 0) + 1
         if state["route"] == "code_search":
             state["evidence"] = await code_search_tool(session, state["query"], state["top_k"])
         else:
             state["evidence"] = await hybrid_retrieval_tool(
-                session, state["query"], state["top_k"]
+                session,
+                state["query"],
+                state["top_k"] * state["retrieval_attempts"],
             )
         return state
 
     return retrieve
+
+
+def _should_retry(state: AgentState) -> str:
+    if not state.get("evidence") and state.get("retrieval_attempts", 0) < 2:
+        return "retrieve_more"
+    return "generate_answer"
 
 
 def _generate_answer(state: AgentState) -> AgentState:
@@ -72,11 +95,17 @@ def build_agent_graph(session: AsyncSession):
     graph = StateGraph(AgentState)
     graph.add_node("analyze_query", _analyze_query)
     graph.add_node("retrieve", _retrieve(session))
+    graph.add_node("retrieve_more", _retrieve(session))
     graph.add_node("generate_answer", _generate_answer)
     graph.add_node("validate_citations", _validate_citations)
     graph.add_edge(START, "analyze_query")
     graph.add_edge("analyze_query", "retrieve")
-    graph.add_edge("retrieve", "generate_answer")
+    graph.add_conditional_edges(
+        "retrieve",
+        _should_retry,
+        {"retrieve_more": "retrieve_more", "generate_answer": "generate_answer"},
+    )
+    graph.add_edge("retrieve_more", "generate_answer")
     graph.add_edge("generate_answer", "validate_citations")
     graph.add_edge("validate_citations", END)
     return graph.compile()

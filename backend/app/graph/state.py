@@ -8,6 +8,7 @@ class AgentState(TypedDict, total=False):
     top_k: int
     route: str
     evidence: list[SearchResult]
+    retrieval_attempts: int
     answer: str
     citations: list[Citation]
     evidence_sufficient: bool
