@@ -10,3 +10,48 @@
 {"question":"Where is the health endpoint registered?","expected_sources":["backend/app/main.py"],"key_facts":["health"]}
 {"question":"Which configuration controls request timeout?","expected_sources":["config/service.yaml"],"key_facts":["request timeout"]}
 {"question":"What changed in the latest deployment?","expected_sources":["deployments/release-notes.md"],"key_facts":["deployment"]}
+{"question":"Which file validates the OAuth callback URL?","expected_sources":["src/auth/redirect.ts"],"key_facts":["redirect URI"]}
+{"question":"What security check runs before exchanging OAuth tokens?","expected_sources":["docs/oauth.md"],"key_facts":["token exchange"]}
+{"question":"Where is the OAuth callback handler documented?","expected_sources":["docs/oauth.md","src/auth/redirect.ts"],"key_facts":["OAuth"]}
+{"question":"How does the application prevent an untrusted redirect?","expected_sources":["src/auth/redirect.ts"],"key_facts":["validated"]}
+{"question":"Which module handles redirect validation failures?","expected_sources":["src/auth/redirect.ts"],"key_facts":["redirect"]}
+{"question":"What exhausted resources in the payment service?","expected_sources":["phase2-fixed.md","incidents/payment-incident.md"],"key_facts":["connection pool"]}
+{"question":"Which deployment introduced the payment failure?","expected_sources":["incidents/payment-incident.md"],"key_facts":["payment"]}
+{"question":"Where is the payment incident remediation described?","expected_sources":["phase2-fixed.md"],"key_facts":["fixed"]}
+{"question":"Which service experienced the pool exhaustion event?","expected_sources":["incidents/payment-incident.md"],"key_facts":["payment service"]}
+{"question":"What operational symptom accompanied the payment outage?","expected_sources":["incidents/payment-incident.md"],"key_facts":["exhausted"]}
+{"question":"Which module creates the database connection pool?","expected_sources":["src/db/pool.py"],"key_facts":["connection pool"]}
+{"question":"Where does the application configure database pooling?","expected_sources":["src/db/pool.py","docs/database.md"],"key_facts":["pool"]}
+{"question":"What owns connections used by the API?","expected_sources":["src/db/pool.py"],"key_facts":["database"]}
+{"question":"Which source defines pool lifecycle management?","expected_sources":["src/db/pool.py"],"key_facts":["pool"]}
+{"question":"How are database connections shared between requests?","expected_sources":["docs/database.md"],"key_facts":["connection"]}
+{"question":"Which configuration file defines retry backoff?","expected_sources":["config/retries.yaml"],"key_facts":["backoff"]}
+{"question":"What setting controls retry delay growth?","expected_sources":["config/retries.yaml"],"key_facts":["retry"]}
+{"question":"Where is the maximum retry count configured?","expected_sources":["config/retries.yaml"],"key_facts":["retry"]}
+{"question":"How does the service space retries apart?","expected_sources":["config/retries.yaml"],"key_facts":["backoff"]}
+{"question":"Which YAML file contains resilience settings?","expected_sources":["config/retries.yaml"],"key_facts":["retries"]}
+{"question":"Which incident report describes the checkout timeout?","expected_sources":["incidents/checkout-timeout.md"],"key_facts":["timeout"]}
+{"question":"What symptom affected checkout requests?","expected_sources":["incidents/checkout-timeout.md"],"key_facts":["checkout"]}
+{"question":"Where are checkout timeout findings recorded?","expected_sources":["incidents/checkout-timeout.md"],"key_facts":["timeout"]}
+{"question":"Which component was unavailable during checkout?","expected_sources":["incidents/checkout-timeout.md"],"key_facts":["checkout"]}
+{"question":"What failure mode caused checkout requests to stall?","expected_sources":["incidents/checkout-timeout.md"],"key_facts":["timeout"]}
+{"question":"Which log reports the payment deployment error?","expected_sources":["logs/payment-service.log"],"key_facts":["payment-service"]}
+{"question":"What service emitted the deployment failure?","expected_sources":["logs/payment-service.log"],"key_facts":["payment-service"]}
+{"question":"Where can the payment deployment error be found?","expected_sources":["logs/payment-service.log"],"key_facts":["deployment"]}
+{"question":"Which log file should be correlated with the payment incident?","expected_sources":["logs/payment-service.log"],"key_facts":["payment"]}
+{"question":"What identifier appears in the payment service error log?","expected_sources":["logs/payment-service.log"],"key_facts":["payment-service"]}
+{"question":"Where is incident severity converted to a normalized value?","expected_sources":["src/incidents/severity.py"],"key_facts":["severity"]}
+{"question":"Which code owns severity normalization?","expected_sources":["src/incidents/severity.py"],"key_facts":["severity"]}
+{"question":"How are incident severity labels standardized?","expected_sources":["src/incidents/severity.py"],"key_facts":["normalized"]}
+{"question":"Which module maps raw incident severity values?","expected_sources":["src/incidents/severity.py"],"key_facts":["severity"]}
+{"question":"Where should severity mapping changes be made?","expected_sources":["src/incidents/severity.py"],"key_facts":["severity"]}
+{"question":"What documentation explains database pool sizing?","expected_sources":["docs/database.md"],"key_facts":["pool size"]}
+{"question":"Which guide describes selecting the database pool size?","expected_sources":["docs/database.md"],"key_facts":["pool"]}
+{"question":"Where are database capacity recommendations documented?","expected_sources":["docs/database.md"],"key_facts":["database"]}
+{"question":"What factor determines the configured pool size?","expected_sources":["docs/database.md"],"key_facts":["pool size"]}
+{"question":"Which document should engineers read before changing pool capacity?","expected_sources":["docs/database.md"],"key_facts":["database"]}
+{"question":"What evidence supports rolling back the payment release?","expected_sources":["postmortems/payment.md"],"key_facts":["rollback"]}
+{"question":"Where is the payment rollback recommendation justified?","expected_sources":["postmortems/payment.md"],"key_facts":["rollback"]}
+{"question":"Which postmortem contains rollback evidence?","expected_sources":["postmortems/payment.md"],"key_facts":["payment"]}
+{"question":"What action was recommended after the payment incident?","expected_sources":["postmortems/payment.md"],"key_facts":["rollback"]}
+{"question":"Which document links the payment symptoms to rollback?","expected_sources":["postmortems/payment.md"],"key_facts":["rollback"]}
