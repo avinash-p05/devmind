@@ -9,9 +9,23 @@ from sqlalchemy.orm import selectinload
 from app.domain.contracts import SourceMetadata
 from app.embeddings import embed_text
 from app.ingestion.text import chunk_text
-from app.persistence.models import ChunkRecord, DocumentRecord, IncidentRecord
+from app.persistence.models import (
+    ChunkRecord,
+    ConversationRecord,
+    DocumentRecord,
+    IncidentRecord,
+    MessageRecord,
+    RetrievalEventRecord,
+)
 from app.retrieval.reranker import reciprocal_rank_fusion
-from app.schemas import Document, DocumentCreate, IncidentAnalysis, SearchResult
+from app.schemas import (
+    ConversationMessage,
+    ConversationResponse,
+    Document,
+    DocumentCreate,
+    IncidentAnalysis,
+    SearchResult,
+)
 
 
 def _chunk_uuid(chunk_id: str) -> UUID:
@@ -173,3 +187,79 @@ async def save_incident_analysis(
     session.add(record)
     await session.commit()
     return analysis
+
+
+async def save_chat_interaction(
+    session: AsyncSession,
+    *,
+    conversation_id: UUID | None,
+    query: str,
+    response: str,
+    latency_ms: float,
+    estimated_tokens: int,
+    evidence: list[SearchResult],
+) -> ConversationResponse:
+    if conversation_id is None:
+        conversation = ConversationRecord()
+        session.add(conversation)
+        await session.flush()
+    else:
+        conversation = await session.get(ConversationRecord, conversation_id)
+        if conversation is None:
+            raise ValueError(f"conversation does not exist: {conversation_id}")
+
+    user_message = MessageRecord(
+        conversation_id=conversation.id,
+        role="user",
+        content=query,
+        estimated_tokens=max(1, len(query) // 4),
+    )
+    assistant_message = MessageRecord(
+        conversation_id=conversation.id,
+        role="assistant",
+        content=response,
+        latency_ms=latency_ms,
+        estimated_tokens=estimated_tokens,
+        retrieval_events=[
+            RetrievalEventRecord(
+                chunk_id=result.chunk_id,
+                score=result.score,
+                rank=result.rank,
+                retrieval_method=result.retrieval_method,
+            )
+            for result in evidence
+        ],
+    )
+    conversation.messages.extend([user_message, assistant_message])
+    await session.commit()
+    await session.refresh(conversation)
+    return _to_conversation(conversation)
+
+
+async def get_conversation(
+    session: AsyncSession, conversation_id: UUID
+) -> ConversationResponse | None:
+    conversation = await session.scalar(
+        select(ConversationRecord)
+        .options(selectinload(ConversationRecord.messages))
+        .where(ConversationRecord.id == conversation_id)
+    )
+    return _to_conversation(conversation) if conversation else None
+
+
+def _to_conversation(conversation: ConversationRecord) -> ConversationResponse:
+    return ConversationResponse(
+        id=conversation.id,
+        created_at=conversation.created_at,
+        messages=[
+            ConversationMessage(
+                id=message.id,
+                role=message.role,
+                content=message.content,
+                latency_ms=message.latency_ms,
+                estimated_tokens=message.estimated_tokens,
+                created_at=message.created_at,
+            )
+            for message in conversation.messages
+        ],
+    )

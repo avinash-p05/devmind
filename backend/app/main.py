@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from time import perf_counter
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -13,13 +14,16 @@ from app.ingestion.queue import enqueue_ingestion, get_ingestion_job
 from app.persistence.database import get_session, initialize_database
 from app.persistence.service import (
     create_persisted_document,
+    get_conversation,
     list_persisted_documents,
+    save_chat_interaction,
     save_incident_analysis,
     search_persisted_documents,
 )
 from app.schemas import (
     ChatRequest,
     ChatResponse,
+    ConversationResponse,
     Document,
     DocumentCreate,
     DocumentListResponse,
@@ -31,6 +35,7 @@ from app.schemas import (
     IngestionJobResponse,
     SearchRequest,
     SearchResponse,
+    SearchResult,
 )
 
 settings = get_settings()
@@ -139,7 +144,46 @@ async def chat(
             evidence_sufficient=False,
             citations=[],
         )
-    return await answer_question(session, payload.query, payload.top_k)
+    started = perf_counter()
+    response = await answer_question(session, payload.query, payload.top_k)
+    conversation = await save_chat_interaction(
+        session,
+        conversation_id=payload.conversation_id,
+        query=payload.query,
+        response=response.answer,
+        latency_ms=round((perf_counter() - started) * 1000, 2),
+        estimated_tokens=max(1, len(response.answer) // 4),
+        evidence=[
+            SearchResult(
+                chunk_id=citation.chunk_id,
+                document_id=citation.chunk_id,
+                document_name=citation.document_name,
+                content="",
+                score=citation.score,
+                rank=index,
+                retrieval_method="citation",
+                metadata=citation.metadata,
+            )
+            for index, citation in enumerate(response.citations, start=1)
+        ],
+    )
+    response.conversation_id = conversation.id
+    response.message_id = conversation.messages[-1].id
+    return response
+
+
+@app.get(
+    "/conversations/{conversation_id}",
+    response_model=ConversationResponse,
+    tags=["conversations"],
+)
+async def read_conversation(
+    conversation_id: UUID, session: AsyncSession = Depends(get_session)
+) -> ConversationResponse:
+    conversation = await get_conversation(session, conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conversation
 
 
 @app.post("/incidents/analyze", response_model=IncidentAnalysis, tags=["incidents"])

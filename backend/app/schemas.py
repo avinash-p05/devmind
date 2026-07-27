@@ -67,6 +67,7 @@ class SearchResponse(BaseModel):
 class ChatRequest(BaseModel):
     query: str = Field(min_length=1)
     top_k: int = Field(default=5, ge=1, le=10)
+    conversation_id: UUID | None = None
 
 
 class Citation(BaseModel):
@@ -83,6 +84,23 @@ class ChatResponse(BaseModel):
     confidence: str
     evidence_sufficient: bool
     citations: list[Citation]
+    conversation_id: UUID | None = None
+    message_id: UUID | None = None
+
+
+class ConversationMessage(BaseModel):
+    id: UUID
+    role: str
+    content: str
+    latency_ms: float | None = None
+    estimated_tokens: int | None = None
+    created_at: datetime
+
+
+class ConversationResponse(BaseModel):
+    id: UUID
+    created_at: datetime
+    messages: list[ConversationMessage]
 
 
 class IncidentAnalyzeRequest(BaseModel):
