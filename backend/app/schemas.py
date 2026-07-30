@@ -20,6 +20,20 @@ class DocumentCreate(BaseModel):
     metadata: dict[str, str] = Field(default_factory=dict)
 
 
+class RepositoryIndexRequest(BaseModel):
+    path: str = Field(min_length=1)
+    batch_size: int = Field(default=100, ge=1, le=1000)
+
+
+class RepositoryIndexResponse(BaseModel):
+    path: str
+    discovered: int
+    indexed: int
+    skipped_duplicates: int
+    failed: int
+    errors: list[str]
+
+
 class Document(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     name: str

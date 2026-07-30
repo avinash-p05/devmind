@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.evaluation import get_evaluation, run_evaluation
 from app.graph.workflow import analyze_incident, answer_question
+from app.ingestion.bulk import index_repository
 from app.ingestion.queue import enqueue_ingestion, get_ingestion_job
 from app.persistence.database import get_session, initialize_database
 from app.persistence.service import (
@@ -33,6 +34,8 @@ from app.schemas import (
     IncidentAnalysis,
     IncidentAnalyzeRequest,
     IngestionJobResponse,
+    RepositoryIndexRequest,
+    RepositoryIndexResponse,
     SearchRequest,
     SearchResponse,
     SearchResult,
@@ -109,6 +112,23 @@ async def read_ingestion(job_id: UUID) -> IngestionJobResponse:
     if job is None:
         raise HTTPException(status_code=404, detail="Ingestion job not found")
     return job
+
+
+@app.post(
+    "/repositories/index",
+    response_model=RepositoryIndexResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["ingestion"],
+)
+async def index_repository_route(
+    payload: RepositoryIndexRequest, session: AsyncSession = Depends(get_session)
+) -> RepositoryIndexResponse:
+    if not settings.persistence_enabled:
+        raise HTTPException(
+            status_code=503, detail="Persistence is required for repository indexing"
+        )
+    stats = await index_repository(session, payload.path, batch_size=payload.batch_size)
+    return RepositoryIndexResponse(path=payload.path, **stats.__dict__)
 
 
 @app.get("/documents", response_model=DocumentListResponse, tags=["documents"])
