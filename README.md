@@ -38,6 +38,15 @@ docker compose up -d --build --wait
 
 Open `http://localhost:5173` for the UI or `http://localhost:8000/docs` for the API.
 
+To generate a reproducible 1,000-document engineering fixture corpus and index it:
+
+```powershell
+uv run --directory backend python scripts/generate_demo_corpus.py data/demo-corpus --documents 1000
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/repositories/index `
+  -ContentType "application/json" `
+  -Body '{"path":"backend/data/demo-corpus","batch_size":100}'
+```
+
 ## Validation
 
 ```powershell
