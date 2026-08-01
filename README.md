@@ -47,6 +47,18 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8000/repositories/index `
   -Body '{"path":"backend/data/demo-corpus","batch_size":100}'
 ```
 
+After indexing the corpus, run the reproducible hybrid-vs-semantic benchmark:
+
+```powershell
+uv run --directory backend python scripts/run_evaluation.py `
+  --dataset v1 --top-k 5 --output data/evaluation/report.json
+```
+
+The report records case count, recall@5, precision@5, answer correctness, citation
+accuracy, hallucination rate, latency, estimated token usage, and whether hybrid
+retrieval beats the semantic-only baseline. A recall target is reported from measured
+results; it is not hard-coded.
+
 ## AWS deployment
 
 The AWS target is defined in `infra/terraform` and provisions ECR, S3, RDS PostgreSQL,
