@@ -28,7 +28,7 @@ The API is available at `http://localhost:8000`. OpenAPI documentation is at `/d
 docker compose up -d postgres redis
 ```
 
-The current milestone runs a Postgres-backed document ingestion path with format-aware parsing for text, HTML, PDF, logs, incidents, and repository snapshots; bulk repository indexing with duplicate detection; deterministic local embeddings; pgvector hybrid search; a Redis-backed ingestion worker; a LangGraph-backed grounded assistant; structured incident analysis; and a versioned evaluation runner. The API exposes `/health`, `/documents`, `/repositories/index`, `/ingestions`, `/ingestions/{job_id}`, `/search`, `/chat`, `/conversations/{conversation_id}`, `/incidents/analyze`, `/evaluations/run`, and `/evaluations/{run_id}`. AWS deployment is added in a subsequent milestone.
+The current milestone runs a Postgres-backed document ingestion path with format-aware parsing for text, HTML, PDF, logs, incidents, and repository snapshots; bulk repository indexing with duplicate detection; deterministic local embeddings; pgvector hybrid search; a Redis-backed ingestion worker; a LangGraph-backed grounded assistant; structured incident analysis; and a versioned evaluation runner. The API exposes `/health`, `/documents`, `/repositories/index`, `/ingestions`, `/ingestions/{job_id}`, `/search`, `/chat`, `/conversations/{conversation_id}`, `/incidents/analyze`, `/evaluations/run`, and `/evaluations/{run_id}`.
 
 To run the containerized stack:
 
@@ -46,6 +46,24 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8000/repositories/index `
   -ContentType "application/json" `
   -Body '{"path":"backend/data/demo-corpus","batch_size":100}'
 ```
+
+## AWS deployment
+
+The AWS target is defined in `infra/terraform` and provisions ECR, S3, RDS PostgreSQL,
+ElastiCache Redis, ECS Fargate services, and an application load balancer. After building
+and pushing the three images, copy `terraform.tfvars.example` to `terraform.tfvars`, set
+the image URLs and database password, then run:
+
+```powershell
+cd infra/terraform
+terraform init
+terraform fmt -check
+terraform validate
+terraform apply
+```
+
+The GitHub Actions workflow runs backend tests/lint and the frontend production build on
+pushes and pull requests.
 
 ## Validation
 

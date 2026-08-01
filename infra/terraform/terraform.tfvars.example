@@ -1,0 +1,6 @@
+aws_region       = "us-east-1"
+project_name     = "devmind"
+api_image        = "ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/devmind-api:latest"
+worker_image     = "ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/devmind-worker:latest"
+frontend_image   = "ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/devmind-frontend:latest"
+database_password = "replace-me"
