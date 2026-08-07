@@ -204,7 +204,11 @@ async def save_chat_interaction(
         session.add(conversation)
         await session.flush()
     else:
-        conversation = await session.get(ConversationRecord, conversation_id)
+        conversation = await session.scalar(
+            select(ConversationRecord)
+            .options(selectinload(ConversationRecord.messages))
+            .where(ConversationRecord.id == conversation_id)
+        )
         if conversation is None:
             raise ValueError(f"conversation does not exist: {conversation_id}")
 
@@ -230,10 +234,16 @@ async def save_chat_interaction(
             for result in evidence
         ],
     )
-    conversation.messages.extend([user_message, assistant_message])
+    session.add_all([user_message, assistant_message])
     await session.commit()
-    await session.refresh(conversation)
-    return _to_conversation(conversation)
+    persisted = await session.scalar(
+        select(ConversationRecord)
+        .options(selectinload(ConversationRecord.messages))
+        .where(ConversationRecord.id == conversation.id)
+    )
+    if persisted is None:
+        raise RuntimeError(f"conversation disappeared after commit: {conversation.id}")
+    return _to_conversation(persisted)
 
 
 async def get_conversation(
