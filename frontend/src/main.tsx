@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import "./styles.css";
 
 type SearchMode = "semantic" | "keyword" | "hybrid";
@@ -16,11 +16,14 @@ type SearchResult = {
 };
 
 type ChatResponse = {
+  query: string;
   answer: string;
   route: string;
   confidence: string;
   evidence_sufficient: boolean;
-  citations: Array<{ chunk_id: string; document_name: string; score: number }>;
+  citations: Array<{ chunk_id: string; document_name: string; score: number; metadata: Record<string, string> }>;
+  conversation_id?: string;
+  message_id?: string;
 };
 
 type IncidentAnalysis = {
@@ -51,6 +54,24 @@ type IngestionJob = {
   error?: string;
 };
 
+type DocumentSummary = {
+  id: string;
+  name: string;
+  source_type: string;
+  content_length: number;
+  metadata: Record<string, string>;
+  created_at: string;
+};
+
+type RepositoryIndexResponse = {
+  path: string;
+  discovered: number;
+  indexed: number;
+  skipped_duplicates: number;
+  failed: number;
+  errors: string[];
+};
+
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 function App() {
@@ -59,6 +80,10 @@ function App() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [sourceName, setSourceName] = useState("payment-incident.md");
   const [sourceContent, setSourceContent] = useState("");
+  const [sourceType, setSourceType] = useState("incident");
+  const [repositoryPath, setRepositoryPath] = useState("");
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [conversationId, setConversationId] = useState<string | undefined>();
   const [message, setMessage] = useState("Ready for an engineering query");
   const [loading, setLoading] = useState(false);
   const [assistant, setAssistant] = useState<ChatResponse | null>(null);
@@ -89,8 +114,8 @@ function App() {
     }
   }
 
-  async function ingestSource(event: FormEvent) {
-    event.preventDefault();
+  async function ingestSource(event?: FormEvent) {
+    event?.preventDefault();
     setLoading(true);
     setMessage("Indexing source...");
     try {
@@ -99,9 +124,9 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: sourceName,
-          source_type: "incident",
+          source_type: sourceType,
           content: sourceContent,
-          metadata: { path: sourceName, service: "payment-service" },
+          metadata: { path: sourceName },
         }),
       });
       if (!response.ok) throw new Error(`Indexing failed (${response.status})`);
@@ -122,9 +147,48 @@ function App() {
       }
       if (current.status !== "completed") throw new Error(current.error ?? "Ingestion did not complete");
       setSourceContent("");
+      await loadDocuments();
       setMessage(`${sourceName} indexed successfully`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Indexing failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadDocuments() {
+    const response = await fetch(`${apiBase}/documents`);
+    if (!response.ok) throw new Error(`Document listing failed (${response.status})`);
+    const data = await response.json();
+    setDocuments(data.items);
+  }
+
+  async function selectSourceFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setSourceName(file.name);
+    setMessage(`Loaded ${file.name}; submit to index it`);
+    setSourceContent(await file.text());
+  }
+
+  async function indexRepository(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage("Indexing repository snapshot...");
+    try {
+      const response = await fetch(`${apiBase}/repositories/index`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: repositoryPath, batch_size: 100 }),
+      });
+      if (!response.ok) throw new Error(`Repository indexing failed (${response.status})`);
+      const data: RepositoryIndexResponse = await response.json();
+      await loadDocuments();
+      setMessage(
+        `${data.indexed} indexed · ${data.skipped_duplicates} duplicates · ${data.failed} failed`,
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Repository indexing failed");
     } finally {
       setLoading(false);
     }
@@ -142,9 +206,33 @@ function App() {
       if (!response.ok) throw new Error(`Assistant failed (${response.status})`);
       const data: ChatResponse = await response.json();
       setAssistant(data);
+      setConversationId(data.conversation_id);
       setMessage(data.evidence_sufficient ? `Grounded via ${data.route}` : "Evidence is insufficient");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Assistant failed");
+    } finally {
+      setLoading(false);
+    }
+
+  }
+
+  async function continueConversation() {
+    if (!conversationId) return;
+    setLoading(true);
+    setMessage("Continuing the grounded conversation...");
+    try {
+      const response = await fetch(`${apiBase}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, top_k: 5, conversation_id: conversationId }),
+      });
+      if (!response.ok) throw new Error(`Conversation request failed (${response.status})`);
+      const data: ChatResponse = await response.json();
+      setAssistant(data);
+      setConversationId(data.conversation_id);
+      setMessage(`Conversation continued via ${data.route}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Conversation request failed");
     } finally {
       setLoading(false);
     }
@@ -199,12 +287,24 @@ function App() {
         <div className="status"><span /> {message}</div>
       </section>
       <section className="workspace-grid">
-        <form className="tool-panel" onSubmit={ingestSource}>
+        <section className="tool-panel">
           <p className="eyebrow">01 · INGEST SOURCE</p>
           <h2>Give the system a useful lead.</h2>
           <label>Source name<input value={sourceName} onChange={(event) => setSourceName(event.target.value)} /></label>
+          <label>Source type<select value={sourceType} onChange={(event) => setSourceType(event.target.value)}>
+            <option value="document">document</option>
+            <option value="repository">repository</option>
+            <option value="log">log</option>
+            <option value="incident">incident</option>
+          </select></label>
+          <label>Load local text file<input type="file" accept=".md,.txt,.html,.htm,.log,.json,.py,.ts,.tsx,.js,.sql,.yaml,.yml" onChange={selectSourceFile} /></label>
           <label>Incident or engineering text<textarea value={sourceContent} onChange={(event) => setSourceContent(event.target.value)} required placeholder="Paste a postmortem, stack trace, or runbook excerpt..." /></label>
-          <button disabled={loading || !sourceContent.trim()} type="submit">Index source <span>↗</span></button>
+          <button disabled={loading || !sourceContent.trim()} onClick={() => void ingestSource()} type="button">Index source <span>↗</span></button>
+          <form className="repository-form" onSubmit={indexRepository}>
+            <p className="eyebrow">02 · INDEX REPOSITORY</p>
+            <label>Local repository or corpus path<input value={repositoryPath} onChange={(event) => setRepositoryPath(event.target.value)} placeholder="D:\DevMind\backend\data\demo-corpus" required /></label>
+            <button disabled={loading || !repositoryPath.trim()} type="submit">Index snapshot <span>↗</span></button>
+          </form>
           <div className="incident-tool">
             <p className="eyebrow">03 · ANALYZE INCIDENT</p>
             <label>Service<input value={incidentService} onChange={(event) => setIncidentService(event.target.value)} /></label>
@@ -220,7 +320,7 @@ function App() {
               <small>{incident.evidence.length} supporting evidence item{incident.evidence.length === 1 ? "" : "s"}</small>
             </div>}
           </div>
-        </form>
+        </section>
         <section className="tool-panel search-panel">
           <p className="eyebrow">02 · RETRIEVE EVIDENCE</p>
           <h2>Ask the knowledge base.</h2>
@@ -234,6 +334,7 @@ function App() {
             ))}
           </div>
           <button className="assistant-button" disabled={loading || !query.trim()} onClick={askAssistant} type="button">Ask grounded assistant <span>↗</span></button>
+          {conversationId && <button className="continue-button" disabled={loading || !query.trim()} onClick={continueConversation} type="button">Continue conversation <span>↗</span></button>}
           {assistant && <div className="assistant-answer">
             <div className="evidence-meta"><span>{assistant.route}</span><strong>{assistant.confidence} confidence</strong></div>
             <p>{assistant.answer}</p>
@@ -246,6 +347,21 @@ function App() {
                 <h3>{result.document_name}</h3>
                 <p>{result.content}</p>
               </article>
+            ))}
+          </div>
+        </section>
+        <section className="documents-panel">
+          <div>
+            <p className="eyebrow">05 · INDEXED WORKSPACE</p>
+            <h2>What the assistant can see.</h2>
+          </div>
+          <button disabled={loading} onClick={() => loadDocuments().catch((error) => setMessage(error instanceof Error ? error.message : "Document listing failed"))} type="button">Refresh inventory</button>
+          <div className="document-list">
+            {documents.length === 0 ? <p className="empty-state">Refresh to inspect indexed documents.</p> : documents.slice(0, 12).map((document) => (
+              <div className="document-row" key={document.id}>
+                <strong>{document.name}</strong>
+                <span>{document.source_type} · {document.content_length} chars</span>
+              </div>
             ))}
           </div>
         </section>

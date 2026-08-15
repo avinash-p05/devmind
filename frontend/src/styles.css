@@ -41,6 +41,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .mode-switch button { border-color: #496157; background: transparent; color: #9eafa4; padding: 9px 11px; }
 .mode-switch button.active { border-color: #c8e66d; color: #c8e66d; }
 .assistant-button { width: 100%; margin-bottom: 20px; }
+.continue-button { width: 100%; margin-bottom: 20px; border-color: #71977e; background: transparent; color: #c8e66d; }
 .assistant-answer { border: 1px solid #71977e; padding: 16px; margin-bottom: 20px; background: #20352d; }
 .assistant-answer p { line-height: 1.5; color: #e8efe7; }
 .assistant-answer small { color: #c8e66d; font: 11px 'DM Mono', monospace; text-transform: uppercase; }
@@ -50,4 +51,11 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .evidence-meta { display: flex; justify-content: space-between; color: #c8e66d; font: 11px 'DM Mono', monospace; text-transform: uppercase; }
 .evidence h3 { margin: 12px 0 6px; font-size: 17px; }
 .evidence p { color: #b6c5bb; line-height: 1.45; margin: 0; }
+.repository-form { border-top: 1px solid #496157; margin-top: 32px; padding-top: 28px; }
+.documents-panel { border-top: 1px solid #496157; padding: 48px 0 20px; display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; }
+.documents-panel h2 { margin-bottom: 8px; }
+.document-list { grid-column: 1 / -1; display: grid; gap: 8px; }
+.document-row { display: flex; justify-content: space-between; gap: 16px; padding: 13px 16px; background: #172722; border-left: 2px solid #71977e; }
+.document-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.document-row span { color: #9eafa4; font: 11px 'DM Mono', monospace; text-transform: uppercase; white-space: nowrap; }
 @media (max-width: 760px) { .shell { width: min(100% - 32px, 1120px); padding-top: 32px; } .hero { padding: 10vh 0 16vh; } .workspace-grid { grid-template-columns: 1fr; } .tool-panel { min-height: 0; } .evaluation-panel { grid-template-columns: 1fr; } .evaluation-summary { grid-template-columns: repeat(2, 1fr); } }
