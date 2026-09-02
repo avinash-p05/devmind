@@ -292,6 +292,31 @@ The Docker API container cannot access arbitrary Windows host paths unless they
 are mounted. For repository indexing, run the API with `uv` as shown above or
 add an explicit Compose volume mount.
 
+### Configure real providers
+
+The default configuration uses deterministic local embeddings and a local
+evidence-based answer generator so tests and offline development remain
+repeatable. Real OpenAI-compatible providers can be enabled without changing
+retrieval or graph code:
+
+```powershell
+$env:EMBEDDING_PROVIDER="openai"
+$env:EMBEDDING_MODEL="text-embedding-3-small"
+$env:EMBEDDING_API_KEY="<set outside source control>"
+$env:EMBEDDING_BASE_URL="https://api.openai.com/v1"
+$env:EMBEDDING_DIMENSION="1536"
+$env:LLM_PROVIDER="openai"
+$env:LLM_MODEL="gpt-4o-mini"
+$env:LLM_API_KEY="<set outside source control>"
+$env:LLM_BASE_URL="https://api.openai.com/v1"
+```
+
+The current PostgreSQL schema uses 1,536-dimensional pgvector columns. A
+different embedding dimension is rejected until the schema is migrated and
+re-embedded. Provider and model metadata is stored with indexed chunks. Remote
+provider failures are surfaced rather than silently converted into successful
+answers.
+
 ### Test the assistant
 
 Use the frontend query box with:

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.domain.contracts import SourceMetadata
-from app.embeddings import embed_text
+from app.embeddings import embed_text, embedding_metadata
 from app.ingestion.text import chunk_text
 from app.persistence.models import (
     ChunkRecord,
@@ -53,8 +53,8 @@ async def create_persisted_document(session: AsyncSession, payload: DocumentCrea
                 id=_chunk_uuid(chunk.id),
                 content=chunk.content,
                 ordinal=chunk.ordinal,
-                metadata_json=asdict(chunk.metadata),
                 embedding=embed_text(chunk.content),
+                metadata_json={**asdict(chunk.metadata), "embedding": embedding_metadata()},
             )
             for chunk in chunks
         ],

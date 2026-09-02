@@ -12,3 +12,5 @@ class AgentState(TypedDict, total=False):
     answer: str
     citations: list[Citation]
     evidence_sufficient: bool
+    llm_metadata: dict
+    estimated_tokens: int

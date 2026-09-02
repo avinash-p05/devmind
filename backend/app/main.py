@@ -172,7 +172,7 @@ async def chat(
         query=payload.query,
         response=response.answer,
         latency_ms=round((perf_counter() - started) * 1000, 2),
-        estimated_tokens=max(1, len(response.answer) // 4),
+        estimated_tokens=response.estimated_tokens or max(1, len(response.answer) // 4),
         evidence=[
             SearchResult(
                 chunk_id=citation.chunk_id,
@@ -189,6 +189,7 @@ async def chat(
     )
     response.conversation_id = conversation.id
     response.message_id = conversation.messages[-1].id
+    response.estimated_tokens = conversation.messages[-1].estimated_tokens
     return response
 
 

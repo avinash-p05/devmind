@@ -100,6 +100,9 @@ class ChatResponse(BaseModel):
     citations: list[Citation]
     conversation_id: UUID | None = None
     message_id: UUID | None = None
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    estimated_tokens: int | None = None
 
 
 class ConversationMessage(BaseModel):

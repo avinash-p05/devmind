@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.graph.state import AgentState
 from app.graph.tools import code_search_tool, hybrid_retrieval_tool
+from app.llm import generate_grounded_answer
 from app.schemas import ChatResponse, Citation, IncidentAnalysis, IncidentAnalyzeRequest
 
 CODE_QUERY = re.compile(
@@ -91,12 +92,32 @@ def _validate_citations(state: AgentState) -> AgentState:
     return state
 
 
+async def _generate_answer_node(state: AgentState) -> AgentState:
+    answer, tokens, metadata = await generate_grounded_answer(
+        state["query"], state.get("evidence", [])
+    )
+    state["answer"] = answer
+    state["estimated_tokens"] = tokens
+    state["llm_metadata"] = metadata
+    state["evidence_sufficient"] = bool(state.get("evidence"))
+    state["citations"] = [
+        Citation(
+            chunk_id=result.chunk_id,
+            document_name=result.document_name,
+            score=result.score,
+            metadata=result.metadata,
+        )
+        for result in state.get("evidence", [])[:3]
+    ]
+    return state
+
+
 def build_agent_graph(session: AsyncSession):
     graph = StateGraph(AgentState)
     graph.add_node("analyze_query", _analyze_query)
     graph.add_node("retrieve", _retrieve(session))
     graph.add_node("retrieve_more", _retrieve(session))
-    graph.add_node("generate_answer", _generate_answer)
+    graph.add_node("generate_answer", _generate_answer_node)
     graph.add_node("validate_citations", _validate_citations)
     graph.add_edge(START, "analyze_query")
     graph.add_edge("analyze_query", "retrieve")
@@ -120,6 +141,9 @@ async def answer_question(session: AsyncSession, query: str, top_k: int) -> Chat
         confidence="medium" if result["evidence_sufficient"] else "low",
         evidence_sufficient=result["evidence_sufficient"],
         citations=result["citations"],
+        llm_provider=result.get("llm_metadata", {}).get("provider"),
+        llm_model=result.get("llm_metadata", {}).get("model"),
+        estimated_tokens=result.get("estimated_tokens"),
     )
 
 
