@@ -14,3 +14,5 @@ class AgentState(TypedDict, total=False):
     evidence_sufficient: bool
     llm_metadata: dict
     estimated_tokens: int
+    generation_attempts: int
+    citation_validation_passed: bool

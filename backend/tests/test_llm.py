@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.llm.service import generate_grounded_answer
+from app.llm.service import cited_chunk_ids, generate_grounded_answer
 from app.schemas import SearchResult
 
 
@@ -30,3 +30,10 @@ async def test_local_grounded_generation_includes_retrieved_citations() -> None:
     assert "database connection pool" in answer
     assert tokens > 0
     assert metadata["provider"] == "local"
+
+
+def test_cited_chunk_ids_extracts_only_uuid_citations() -> None:
+    chunk_id = uuid4()
+
+    assert cited_chunk_ids(f"Supported claim [{chunk_id}]") == {str(chunk_id)}
+    assert cited_chunk_ids("Unsupported claim [not-a-chunk]") == set()

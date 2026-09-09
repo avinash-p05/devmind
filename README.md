@@ -317,6 +317,10 @@ re-embedded. Provider and model metadata is stored with indexed chunks. Remote
 provider failures are surfaced rather than silently converted into successful
 answers.
 
+Generated answers must cite IDs belonging to the retrieved evidence. Invalid or
+missing citations trigger at most one corrective generation attempt; the graph
+then returns the bounded result rather than looping indefinitely.
+
 ### Test the assistant
 
 Use the frontend query box with:

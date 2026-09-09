@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.graph.state import AgentState
 from app.graph.tools import code_search_tool, hybrid_retrieval_tool
-from app.llm import generate_grounded_answer
+from app.llm import cited_chunk_ids, generate_grounded_answer
 from app.schemas import ChatResponse, Citation, IncidentAnalysis, IncidentAnalyzeRequest
 
 CODE_QUERY = re.compile(
@@ -94,11 +94,14 @@ def _validate_citations(state: AgentState) -> AgentState:
 
 async def _generate_answer_node(state: AgentState) -> AgentState:
     answer, tokens, metadata = await generate_grounded_answer(
-        state["query"], state.get("evidence", [])
+        state["query"],
+        state.get("evidence", []),
+        correction=state.get("generation_attempts", 0) > 0,
     )
     state["answer"] = answer
     state["estimated_tokens"] = tokens
     state["llm_metadata"] = metadata
+    state["generation_attempts"] = state.get("generation_attempts", 0) + 1
     state["evidence_sufficient"] = bool(state.get("evidence"))
     state["citations"] = [
         Citation(
@@ -112,6 +115,19 @@ async def _generate_answer_node(state: AgentState) -> AgentState:
     return state
 
 
+def _citation_retry(state: AgentState) -> str:
+    evidence_ids = {str(result.chunk_id) for result in state.get("evidence", [])}
+    cited_ids = cited_chunk_ids(state.get("answer", ""))
+    valid = (
+        not state.get("evidence")
+        or (bool(cited_ids & evidence_ids) and cited_ids <= evidence_ids)
+    )
+    state["citation_validation_passed"] = valid
+    if not valid and state.get("generation_attempts", 0) < 2:
+        return "correct_answer"
+    return "finish"
+
+
 def build_agent_graph(session: AsyncSession):
     graph = StateGraph(AgentState)
     graph.add_node("analyze_query", _analyze_query)
@@ -119,6 +135,7 @@ def build_agent_graph(session: AsyncSession):
     graph.add_node("retrieve_more", _retrieve(session))
     graph.add_node("generate_answer", _generate_answer_node)
     graph.add_node("validate_citations", _validate_citations)
+    graph.add_node("correct_answer", _generate_answer_node)
     graph.add_edge(START, "analyze_query")
     graph.add_edge("analyze_query", "retrieve")
     graph.add_conditional_edges(
@@ -128,7 +145,12 @@ def build_agent_graph(session: AsyncSession):
     )
     graph.add_edge("retrieve_more", "generate_answer")
     graph.add_edge("generate_answer", "validate_citations")
-    graph.add_edge("validate_citations", END)
+    graph.add_conditional_edges(
+        "validate_citations",
+        _citation_retry,
+        {"correct_answer": "correct_answer", "finish": END},
+    )
+    graph.add_edge("correct_answer", "validate_citations")
     return graph.compile()
 
 
