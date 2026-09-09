@@ -1,4 +1,5 @@
 import re
+from time import perf_counter
 
 from langgraph.graph import END, START, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,15 +35,21 @@ def _analyze_query(state: AgentState) -> AgentState:
 
 def _retrieve(session: AsyncSession):
     async def retrieve(state: AgentState) -> AgentState:
+        started = perf_counter()
         state["retrieval_attempts"] = state.get("retrieval_attempts", 0) + 1
         if state["route"] == "code_search":
+            state["selected_tool"] = "code_search"
             state["evidence"] = await code_search_tool(session, state["query"], state["top_k"])
         else:
+            state["selected_tool"] = (
+                "incident_search" if state["route"] == "incident_analysis" else state["route"]
+            )
             state["evidence"] = await hybrid_retrieval_tool(
                 session,
                 state["query"],
                 state["top_k"] * state["retrieval_attempts"],
             )
+        state["retrieval_latency_ms"] = round((perf_counter() - started) * 1000, 2)
         return state
 
     return retrieve
@@ -166,6 +173,9 @@ async def answer_question(session: AsyncSession, query: str, top_k: int) -> Chat
         llm_provider=result.get("llm_metadata", {}).get("provider"),
         llm_model=result.get("llm_metadata", {}).get("model"),
         estimated_tokens=result.get("estimated_tokens"),
+        retrieval_latency_ms=result.get("retrieval_latency_ms"),
+        retry_count=max(0, result.get("retrieval_attempts", 1) - 1),
+        citation_validation_passed=result.get("citation_validation_passed"),
     )
 
 

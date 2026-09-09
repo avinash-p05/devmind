@@ -198,6 +198,7 @@ async def save_chat_interaction(
     latency_ms: float,
     estimated_tokens: int,
     evidence: list[SearchResult],
+    observability: dict | None = None,
 ) -> ConversationResponse:
     if conversation_id is None:
         conversation = ConversationRecord()
@@ -224,6 +225,7 @@ async def save_chat_interaction(
         content=response,
         latency_ms=latency_ms,
         estimated_tokens=estimated_tokens,
+        observability_json=observability or {},
         retrieval_events=[
             RetrievalEventRecord(
                 chunk_id=result.chunk_id,

@@ -16,3 +16,5 @@ class AgentState(TypedDict, total=False):
     estimated_tokens: int
     generation_attempts: int
     citation_validation_passed: bool
+    retrieval_latency_ms: float
+    selected_tool: str

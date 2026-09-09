@@ -75,6 +75,7 @@ class MessageRecord(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     latency_ms: Mapped[float | None] = mapped_column()
     estimated_tokens: Mapped[int | None] = mapped_column(Integer)
+    observability_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     conversation: Mapped[ConversationRecord] = relationship(back_populates="messages")
     retrieval_events: Mapped[list["RetrievalEventRecord"]] = relationship(

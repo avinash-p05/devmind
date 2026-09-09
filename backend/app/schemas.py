@@ -103,6 +103,10 @@ class ChatResponse(BaseModel):
     llm_provider: str | None = None
     llm_model: str | None = None
     estimated_tokens: int | None = None
+    request_id: str | None = None
+    retrieval_latency_ms: float | None = None
+    retry_count: int | None = None
+    citation_validation_passed: bool | None = None
 
 
 class ConversationMessage(BaseModel):

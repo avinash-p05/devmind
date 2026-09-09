@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from time import perf_counter
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -66,6 +66,15 @@ app.add_middleware(
 )
 
 _documents: dict[UUID, Document] = {}
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid4()))
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
@@ -153,7 +162,7 @@ async def search(
 
 @app.post("/chat", response_model=ChatResponse, tags=["agent"])
 async def chat(
-    payload: ChatRequest, session: AsyncSession = Depends(get_session)
+    request: Request, payload: ChatRequest, session: AsyncSession = Depends(get_session)
 ) -> ChatResponse:
     if not settings.persistence_enabled:
         return ChatResponse(
@@ -163,6 +172,7 @@ async def chat(
             confidence="low",
             evidence_sufficient=False,
             citations=[],
+            request_id=request.state.request_id,
         )
     started = perf_counter()
     response = await answer_question(session, payload.query, payload.top_k)
@@ -173,6 +183,15 @@ async def chat(
         response=response.answer,
         latency_ms=round((perf_counter() - started) * 1000, 2),
         estimated_tokens=response.estimated_tokens or max(1, len(response.answer) // 4),
+        observability={
+            "request_id": request.state.request_id,
+            "route": response.route,
+            "llm_provider": response.llm_provider,
+            "llm_model": response.llm_model,
+            "retrieval_latency_ms": response.retrieval_latency_ms,
+            "retry_count": response.retry_count,
+            "citation_validation_passed": response.citation_validation_passed,
+        },
         evidence=[
             SearchResult(
                 chunk_id=citation.chunk_id,
@@ -190,6 +209,7 @@ async def chat(
     response.conversation_id = conversation.id
     response.message_id = conversation.messages[-1].id
     response.estimated_tokens = conversation.messages[-1].estimated_tokens
+    response.request_id = request.state.request_id
     return response
 
 
