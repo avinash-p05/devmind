@@ -292,6 +292,24 @@ The Docker API container cannot access arbitrary Windows host paths unless they
 are mounted. For repository indexing, run the API with `uv` as shown above or
 add an explicit Compose volume mount.
 
+### Run the ingestion benchmark
+
+After PostgreSQL is available, this command generates and indexes the requested
+corpus through the same parser, chunker, embedding, and persistence pipeline:
+
+```powershell
+uv run --directory backend python scripts/benchmark_ingestion.py `
+  backend/data/benchmark-corpus `
+  --documents 1000 `
+  --output backend/data/evaluation/ingestion-report.json
+```
+
+The JSON report records discovered/indexed/duplicate/failed documents, database
+document and chunk totals, total ingestion time, measured embedding time, average
+processing time, and a second duplicate-detection pass. The benchmark runs the
+bulk pipeline directly; Redis queue throughput is a separate operational concern
+and is not silently represented as part of these timings.
+
 ### Configure real providers
 
 The default configuration uses deterministic local embeddings and a local

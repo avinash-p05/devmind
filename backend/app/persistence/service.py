@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from hashlib import sha256
+from time import perf_counter
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -32,7 +33,9 @@ def _chunk_uuid(chunk_id: str) -> UUID:
     return UUID(chunk_id[:32])
 
 
-async def create_persisted_document(session: AsyncSession, payload: DocumentCreate) -> Document:
+async def create_persisted_document(
+    session: AsyncSession, payload: DocumentCreate, metrics: dict[str, float] | None = None
+) -> Document:
     metadata = SourceMetadata(
         source_type=payload.source_type.value,
         source_name=payload.name,
@@ -42,22 +45,30 @@ async def create_persisted_document(session: AsyncSession, payload: DocumentCrea
         extra=payload.metadata,
     )
     chunks = chunk_text(payload.content, metadata)
+    indexed_chunks = []
+    for chunk in chunks:
+        started = perf_counter()
+        embedding = embed_text(chunk.content)
+        if metrics is not None:
+            metrics["embedding_duration_ms"] = metrics.get(
+                "embedding_duration_ms", 0.0
+            ) + (perf_counter() - started) * 1000
+        indexed_chunks.append(
+            ChunkRecord(
+                id=_chunk_uuid(chunk.id),
+                content=chunk.content,
+                ordinal=chunk.ordinal,
+                embedding=embedding,
+                metadata_json={**asdict(chunk.metadata), "embedding": embedding_metadata()},
+            )
+        )
     document = DocumentRecord(
         source_type=payload.source_type.value,
         name=payload.name,
         uri=payload.uri,
         metadata_json=payload.metadata,
         content_hash=sha256(payload.content.encode("utf-8")).hexdigest(),
-        chunks=[
-            ChunkRecord(
-                id=_chunk_uuid(chunk.id),
-                content=chunk.content,
-                ordinal=chunk.ordinal,
-                embedding=embed_text(chunk.content),
-                metadata_json={**asdict(chunk.metadata), "embedding": embedding_metadata()},
-            )
-            for chunk in chunks
-        ],
+        chunks=indexed_chunks,
     )
     session.add(document)
     await session.commit()

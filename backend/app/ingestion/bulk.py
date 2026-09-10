@@ -28,6 +28,7 @@ async def index_repository(
     root: str | Path,
     *,
     batch_size: int = 100,
+    metrics: dict[str, float] | None = None,
 ) -> BulkIndexStats:
     if batch_size <= 0:
         raise ValueError("batch_size must be positive")
@@ -44,7 +45,7 @@ async def index_repository(
                 stats.skipped_duplicates += 1
                 continue
             try:
-                await create_persisted_document(session, payload)
+                await create_persisted_document(session, payload, metrics)
             except Exception as error:
                 await session.rollback()
                 stats.failed += 1
