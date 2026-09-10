@@ -1,0 +1,18 @@
+{
+  "path": "/workspace/data/benchmark-corpus",
+  "requested_documents": 1000,
+  "discovered": 1000,
+  "indexed": 1000,
+  "skipped_duplicates": 0,
+  "failed": 0,
+  "errors": [],
+  "document_total": 1005,
+  "chunk_total": 1005,
+  "ingestion_duration_ms": 11682.94,
+  "embedding_duration_ms": 171.94,
+  "average_processing_ms": 11.68,
+  "duplicate_pass": {
+    "skipped_duplicates": 1000,
+    "duration_ms": 5725.4
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "dataset_version": "v1",
+  "case_count": 57,
+  "top_k": 5,
+  "hybrid": {
+    "case_count": 57,
+    "recall_at_k": 0.4211,
+    "precision_at_k": 0.0877,
+    "answer_correctness": 0.614,
+    "citation_accuracy": 0.4386,
+    "hallucination_rate": 0.386,
+    "avg_latency_ms": 21.24,
+    "avg_estimated_tokens": 212.32,
+    "measured_fields": [
+      "retrieval_recall",
+      "retrieval_precision",
+      "answer_correct",
+      "citation_accurate",
+      "hallucination",
+      "latency_ms",
+      "estimated_tokens"
+    ]
+  },
+  "semantic": {
+    "case_count": 57,
+    "recall_at_k": 0.4211,
+    "precision_at_k": 0.0877,
+    "answer_correctness": 0.614,
+    "citation_accuracy": 0.4386,
+    "hallucination_rate": 0.386,
+    "avg_latency_ms": 9.08,
+    "avg_estimated_tokens": 212.32,
+    "measured_fields": [
+      "retrieval_recall",
+      "retrieval_precision",
+      "answer_correct",
+      "citation_accurate",
+      "hallucination",
+      "latency_ms",
+      "estimated_tokens"
+    ]
+  },
+  "hybrid_beats_semantic_recall": false
+}

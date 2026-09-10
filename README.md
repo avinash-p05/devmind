@@ -277,8 +277,7 @@ additional documents.
 
 ```powershell
 cd D:\DevMind
-uv run --directory backend python `
-  backend/scripts/generate_demo_corpus.py `
+uv run --directory backend python -m scripts.generate_demo_corpus `
   backend/data/demo-corpus --documents 1000
 ```
 
@@ -298,7 +297,7 @@ After PostgreSQL is available, this command generates and indexes the requested
 corpus through the same parser, chunker, embedding, and persistence pipeline:
 
 ```powershell
-uv run --directory backend python scripts/benchmark_ingestion.py `
+uv run --directory backend python -m scripts.benchmark_ingestion `
   backend/data/benchmark-corpus `
   --documents 1000 `
   --output backend/data/evaluation/ingestion-report.json
@@ -398,7 +397,7 @@ Run the API-backed evaluation after indexing matching documents:
 
 ```powershell
 cd D:\DevMind
-uv run --directory backend python scripts/run_evaluation.py `
+uv run --directory backend python -m scripts.run_evaluation `
   --dataset v1 --top-k 5 `
   --output backend/data/evaluation/report.json
 ```
@@ -416,6 +415,31 @@ The report measures:
 
 The 90% recall claim must come from a measured report. It is not hard-coded in
 the application.
+
+### Latest measured local reports
+
+The checked-in reports were generated on the local Docker PostgreSQL/pgvector
+stack using the deterministic local embedding provider:
+
+| Report | Measured result |
+| --- | --- |
+| Ingestion | 1,000 discovered and indexed, 0 failures, 1,005 total database documents, 1,005 chunks |
+| Ingestion duration | 11,682.94 ms total; 171.94 ms embedding time; 11.68 ms average indexed document |
+| Duplicate pass | 1,000 duplicates detected |
+| Hybrid recall@5 | 0.4211 |
+| Hybrid precision@5 | 0.0877 |
+| Hybrid answer correctness | 0.6140 |
+| Hybrid citation accuracy | 0.4386 |
+| Hybrid hallucination rate | 0.3860 |
+| Hybrid average latency | 21.24 ms |
+| Hybrid average estimated tokens | 212.32 |
+| Semantic recall@5 | 0.4211 |
+
+The current measured report does **not** support a 90% recall@5 claim, and
+hybrid retrieval did not outperform semantic retrieval on this run. See
+[backend/data/evaluation/report.json](backend/data/evaluation/report.json) and
+[backend/data/evaluation/ingestion-report.json](backend/data/evaluation/ingestion-report.json)
+for the complete machine-readable results.
 
 ## AWS deployment
 
