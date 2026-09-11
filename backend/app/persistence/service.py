@@ -36,6 +36,14 @@ def _chunk_uuid(chunk_id: str) -> UUID:
 async def create_persisted_document(
     session: AsyncSession, payload: DocumentCreate, metrics: dict[str, float] | None = None
 ) -> Document:
+    content_hash = sha256(payload.content.encode("utf-8")).hexdigest()
+    existing = await session.scalar(
+        select(DocumentRecord)
+        .options(selectinload(DocumentRecord.chunks))
+        .where(DocumentRecord.content_hash == content_hash)
+    )
+    if existing is not None:
+        return _to_document(existing)
     metadata = SourceMetadata(
         source_type=payload.source_type.value,
         source_name=payload.name,
@@ -67,7 +75,7 @@ async def create_persisted_document(
         name=payload.name,
         uri=payload.uri,
         metadata_json=payload.metadata,
-        content_hash=sha256(payload.content.encode("utf-8")).hexdigest(),
+        content_hash=content_hash,
         chunks=indexed_chunks,
     )
     session.add(document)

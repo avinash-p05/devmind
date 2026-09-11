@@ -309,6 +309,11 @@ processing time, and a second duplicate-detection pass. The benchmark runs the
 bulk pipeline directly; Redis queue throughput is a separate operational concern
 and is not silently represented as part of these timings.
 
+Queued ingestion reports `queued`, `processing`, `retrying`, `completed`, or
+`failed` status, a bounded progress percentage, and attempt count. Worker
+failures are retried up to three attempts; final failures remain visible through
+`GET /ingestions/{job_id}`.
+
 ### Configure real providers
 
 The default configuration uses deterministic local embeddings and a local

@@ -9,6 +9,8 @@ from app.persistence.database import SessionFactory, initialize_database
 from app.persistence.service import create_persisted_document
 from app.schemas import DocumentCreate
 
+MAX_ATTEMPTS = 3
+
 
 async def run_worker() -> None:
     settings = get_settings()
@@ -24,17 +26,29 @@ async def run_worker() -> None:
             if raw is None:
                 continue
             job = json.loads(raw)
-            await update_ingestion_job(job_id, status="processing")
+            attempts = int(job.get("attempts", 0)) + 1
+            await update_ingestion_job(
+                job_id, status="processing", attempts=str(attempts), progress="10"
+            )
             try:
                 async with SessionFactory() as session:
+                    await update_ingestion_job(job_id, progress="25")
                     document = await create_persisted_document(
                         session, DocumentCreate.model_validate(job["payload"])
                     )
                 await update_ingestion_job(
-                    job_id, status="completed", document_id=str(document.id)
+                    job_id, status="completed", document_id=str(document.id), progress="100"
                 )
             except Exception as error:
-                await update_ingestion_job(job_id, status="failed", error=str(error))
+                if attempts < MAX_ATTEMPTS:
+                    await update_ingestion_job(
+                        job_id, status="retrying", error=str(error), progress="0"
+                    )
+                    await redis.rpush(QUEUE_NAME, job_id)
+                else:
+                    await update_ingestion_job(
+                        job_id, status="failed", error=str(error), progress="100"
+                    )
     finally:
         await redis.aclose()
 

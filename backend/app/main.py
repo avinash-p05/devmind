@@ -244,6 +244,8 @@ async def analyze_incident_route(
             confidence="low",
             route="unavailable",
             unresolved_questions=["Start the persistent application environment."],
+            timeline=[],
+            contributing_factors=[],
         )
     analysis = await analyze_incident(session, payload)
     return await save_incident_analysis(session, analysis)

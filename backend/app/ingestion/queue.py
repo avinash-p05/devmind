@@ -15,7 +15,13 @@ def get_redis() -> Redis:
 
 async def enqueue_ingestion(payload: DocumentCreate) -> IngestionJobResponse:
     job_id = uuid4()
-    job = {"id": str(job_id), "status": "queued", "payload": payload.model_dump(mode="json")}
+    job = {
+        "id": str(job_id),
+        "status": "queued",
+        "progress": 0,
+        "attempts": 0,
+        "payload": payload.model_dump(mode="json"),
+    }
     redis = get_redis()
     try:
         await redis.set(f"devmind:job:{job_id}", json.dumps(job))
@@ -39,6 +45,8 @@ async def get_ingestion_job(job_id: UUID) -> IngestionJobResponse | None:
         status=job["status"],
         document_id=job.get("document_id"),
         error=job.get("error"),
+        progress=job.get("progress", 0),
+        attempts=job.get("attempts", 0),
     )
 
 

@@ -212,4 +212,6 @@ async def analyze_incident(
         confidence="medium" if citations else "low",
         route=result["route"],
         unresolved_questions=unresolved,
+        timeline=[],
+        contributing_factors=[],
     )

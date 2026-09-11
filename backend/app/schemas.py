@@ -142,6 +142,8 @@ class IncidentAnalysis(BaseModel):
     confidence: str
     route: str
     unresolved_questions: list[str]
+    timeline: list[str] = Field(default_factory=list)
+    contributing_factors: list[str] = Field(default_factory=list)
 
 
 class EvaluationRunRequest(BaseModel):
@@ -165,3 +167,5 @@ class IngestionJobResponse(BaseModel):
     status: str
     document_id: UUID | None = None
     error: str | None = None
+    progress: int = Field(default=0, ge=0, le=100)
+    attempts: int = Field(default=0, ge=0)
