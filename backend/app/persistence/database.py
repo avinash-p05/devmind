@@ -19,3 +19,9 @@ async def initialize_database() -> None:
     async with engine.begin() as connection:
         await connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await connection.run_sync(Base.metadata.create_all)
+        await connection.execute(
+            text(
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS "
+                "observability_json JSONB NOT NULL DEFAULT '{}'::jsonb"
+            )
+        )
