@@ -96,6 +96,12 @@ def _validate_citations(state: AgentState) -> AgentState:
     ]
     if state.get("evidence_sufficient") and not state["citations"]:
         state["evidence_sufficient"] = False
+    cited_ids = cited_chunk_ids(state.get("answer", ""))
+    state["citation_validation_passed"] = (
+        not state.get("evidence")
+        or (bool(cited_ids & {str(chunk_id) for chunk_id in evidence_ids})
+            and cited_ids <= {str(chunk_id) for chunk_id in evidence_ids})
+    )
     return state
 
 
