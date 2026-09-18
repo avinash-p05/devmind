@@ -1,6 +1,7 @@
 import json
 import re
 from time import perf_counter
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from app.config import get_settings
@@ -56,15 +57,21 @@ def _remote_answer(
                 "messages": [
                     {
                         "role": "system",
-                        "content": (
-                            "You are a grounded engineering incident assistant. "
-                            "Use only supplied evidence and include citation IDs. "
-                            "Never cite an ID that is not supplied.",
-                        ),
+                        "content": [{
+                            "type": "text",
+                            "text": (
+                                "You are a grounded engineering incident assistant. "
+                                "Use only supplied evidence and include citation IDs. "
+                                "Never cite an ID that is not supplied."
+                            ),
+                        }],
                     },
                     {
                         "role": "user",
-                        "content": _grounding_prompt(query, evidence, correction),
+                        "content": [{
+                            "type": "text",
+                            "text": _grounding_prompt(query, evidence, correction),
+                        }],
                     },
                 ],
             }
@@ -75,8 +82,14 @@ def _remote_answer(
         },
         method="POST",
     )
-    with urlopen(request, timeout=settings.llm_timeout_seconds) as response:
-        payload = json.load(response)
+    try:
+        with urlopen(request, timeout=settings.llm_timeout_seconds) as response:
+            payload = json.load(response)
+    except HTTPError as error:
+        detail = error.read(2000).decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"LLM provider request failed with HTTP {error.code}: {detail}"
+        ) from error
     usage = payload.get("usage", {})
     tokens = usage.get("total_tokens")
     return payload["choices"][0]["message"]["content"], tokens
