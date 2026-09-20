@@ -6,36 +6,43 @@ It combines format-aware ingestion, PostgreSQL/pgvector retrieval, PostgreSQL
 full-text search, rank-aware reranking, Redis-backed jobs, and LangGraph workflow
 orchestration behind a FastAPI API and React UI.
 
-> **Implementation status:** This repository contains a working local POC and
-> deployable AWS infrastructure. Embeddings are deterministic local vectors for
-> repeatable development, and answer generation is currently evidence-template
-> based. An external LLM provider, production embedding model, AWS account, and
-> live URL must be configured separately before claiming production deployment or
-> a measured recall target.
+> **Implementation status:** This repository contains a working local POC with
+> configurable local or OpenAI-compatible embedding and LLM providers. The
+> default local mode is deterministic for repeatable tests; the Docker Compose
+> stack can use the provider settings from the ignored root `.env` file. AWS
+> infrastructure is defined but has not been independently verified as a live
+> production deployment.
 
 ## System architecture
 
 ```mermaid
 flowchart TD
     UI[React + TypeScript UI] --> API[FastAPI API]
-    API --> GRAPH[LangGraph workflow]
-    API --> DB[(PostgreSQL + pgvector)]
-    API --> REDIS[(Redis)]
-    WORKER[Redis ingestion worker] --> REDIS
-    WORKER --> INGEST[Parser + chunker + metadata]
-    INGEST --> EMBED[Embedding pipeline]
-    EMBED --> DB
-    GRAPH --> ROUTER[Query analyzer]
-    ROUTER --> CODE[Code-search tool]
-    ROUTER --> RETRIEVE[Hybrid retriever]
+    API --> REQUEST[Request ID + observability middleware]
+    REQUEST --> GRAPH[LangGraph agent workflow]
+    REQUEST --> PERSIST[(Conversation + telemetry persistence)]
+    API --> INGEST_API[Document/repository/queue endpoints]
+    INGEST_API --> REDIS[(Redis queue + job state)]
+    REDIS --> WORKER[Async ingestion worker]
+    WORKER --> PARSE[Format-aware parser]
+    PARSE --> CHUNK[Normalize + chunk + metadata]
+    CHUNK --> EMBED[Embedding provider]
+    EMBED --> DB[(PostgreSQL + pgvector)]
+    GRAPH --> ANALYZE[Query analyzer/router]
+    ANALYZE --> CODE[Code-search tool]
+    ANALYZE --> RETRIEVE[Hybrid retrieval tool]
     CODE --> RETRIEVE
-    RETRIEVE --> VECTOR[pgvector cosine search]
+    RETRIEVE --> VECTOR[pgvector vector search]
     RETRIEVE --> KEYWORD[PostgreSQL full-text search]
-    VECTOR --> RERANK[Reciprocal-rank fusion]
-    KEYWORD --> RERANK
-    RERANK --> GENERATE[Grounded answer generator]
-    GENERATE --> CITE[Citation validator]
-    CITE --> API
+    VECTOR --> FUSE[Candidate merge + RRF reranking]
+    KEYWORD --> FUSE
+    FUSE --> GENERATE[Grounded LLM/local generator]
+    GENERATE --> VALIDATE[Citation ID validator]
+    VALIDATE -->|invalid or missing citations| CORRECT[One bounded correction retry]
+    CORRECT --> VALIDATE
+    VALIDATE --> RESPONSE[Answer + evidence + metrics]
+    RESPONSE --> API
+    GRAPH --> DB
 ```
 
 ### Runtime components
@@ -43,13 +50,15 @@ flowchart TD
 | Component | Responsibility |
 | --- | --- |
 | React/Vite frontend | Ingest sources, index repositories, search evidence, ask questions, analyze incidents, and run evaluations |
-| FastAPI | HTTP API, request validation, persistence coordination, and OpenAPI documentation |
-| LangGraph | Query routing, retrieval tool selection, bounded retry, answer construction, and citation validation |
+| FastAPI | HTTP API, request validation, request IDs, persistence coordination, and OpenAPI documentation |
+| LangGraph | Query routing, retrieval tool selection, bounded evidence retry, answer generation, citation validation, and incident analysis |
+| Embedding service | Deterministic local embeddings for tests or OpenAI-compatible remote embeddings for real indexing |
+| LLM service | Evidence-grounded local answer generation or OpenAI-compatible chat completion with provider/model/token metadata |
 | PostgreSQL | Documents, chunks, incidents, conversations, messages, retrieval events, and evaluation runs |
 | pgvector | Vector storage and cosine-distance candidate retrieval |
 | PostgreSQL FTS | Exact identifiers, error strings, paths, class names, and keyword retrieval |
 | Redis | Async ingestion queue and short-lived ingestion-job state |
-| Worker | Consumes Redis ingestion jobs and persists parsed/embedded documents |
+| Worker | Consumes Redis jobs, reports progress, retries failures up to three attempts, and persists parsed/embedded documents |
 | Terraform/AWS | ECR, S3, RDS PostgreSQL, ElastiCache Redis, ECS Fargate, and ALB infrastructure |
 
 ## End-to-end data flows
@@ -99,16 +108,28 @@ Code-search tool      Hybrid retrieval
                   Reciprocal-rank fusion
                               |
                               v
-                    Evidence/template answer
+                    Grounded provider/local answer
                               |
                               v
                     Citation ID validation
+                         |       |
+                         |       v
+                         |  One correction retry
+                         |       |
+                         +-------+
 ```
 
-The current workflow performs one bounded retrieval retry when no evidence is
-found. Code-oriented questions are routed to the code-search tool, incident
-questions to incident analysis, log questions to log search, and other questions
-to hybrid retrieval.
+The workflow performs one bounded retrieval retry when no evidence is found and
+one bounded answer correction when citations are missing or reference IDs outside
+the retrieved evidence. Code-oriented questions are routed to the code-search
+tool, incident questions to incident analysis, log questions to log search, and
+other questions to hybrid retrieval. The citation check validates citation IDs
+against retrieved chunks; it is not a full natural-language entailment model.
+
+Every chat response can expose the request ID, selected route/tool, retrieval
+latency, retry count, provider/model, estimated or provider-reported token count,
+and citation-validation result. Assistant messages persist this observability
+metadata alongside retrieval events.
 
 ### Async ingestion flow
 
@@ -133,12 +154,16 @@ DevMind/
 │   ├── app/
 │   │   ├── graph/              # LangGraph state, tools, and workflow
 │   │   ├── ingestion/          # Parsers, chunking, queues, bulk indexing
+│   │   ├── embeddings/         # Local and OpenAI-compatible embedding providers
+│   │   ├── llm/                # Grounded local and OpenAI-compatible generation
 │   │   ├── persistence/        # SQLAlchemy models, database, services
 │   │   ├── retrieval/          # Reranking and retrieval helpers
 │   │   ├── data/evaluation/    # Versioned evaluation cases
 │   │   ├── data/manual-test-docs/ # Small local test corpus
-│   │   └── main.py             # FastAPI application
+│   │   ├── main.py             # FastAPI application and request middleware
+│   │   └── worker.py           # Redis-backed ingestion worker
 │   ├── scripts/
+│   │   ├── benchmark_ingestion.py
 │   │   ├── generate_demo_corpus.py
 │   │   └── run_evaluation.py
 │   ├── tests/
@@ -161,7 +186,7 @@ DevMind/
 | `chunks` | Chunk content, ordinal, metadata, embedding, and document relation |
 | `incidents` | Persisted structured incident analyses |
 | `conversations` | Conversation identity and creation time |
-| `messages` | User/assistant content, latency, and estimated token count |
+| `messages` | User/assistant content, latency, estimated token count, and request observability metadata |
 | `retrieval_events` | Retrieved chunk, score, rank, and retrieval method per assistant message |
 | `evaluation_runs` | Dataset version, mode, summary metrics, and case-level results |
 
@@ -317,9 +342,10 @@ failures are retried up to three attempts; final failures remain visible through
 ### Configure real providers
 
 The default configuration uses deterministic local embeddings and a local
-evidence-based answer generator so tests and offline development remain
+evidence-grounded answer generator so tests and offline development remain
 repeatable. Real OpenAI-compatible providers can be enabled without changing
-retrieval or graph code:
+retrieval or graph code. Docker Compose automatically reads these settings from
+the root `.env` file:
 
 ```powershell
 $env:EMBEDDING_PROVIDER="openai"
@@ -332,6 +358,18 @@ $env:LLM_MODEL="gpt-4o-mini"
 $env:LLM_API_KEY="<set outside source control>"
 $env:LLM_BASE_URL="https://api.openai.com/v1"
 ```
+
+The same settings can be placed in `.env` before running:
+
+```powershell
+cd D:\DevMind
+docker compose up -d --build --wait
+```
+
+Never commit `.env` or print its secret values. The provider integration uses
+structured content parts for compatibility with OpenAI-compatible gateways and
+surfaces provider HTTP failures instead of returning a fabricated successful
+answer.
 
 The current PostgreSQL schema uses 1,536-dimensional pgvector columns. A
 different embedding dimension is rejected until the schema is migrated and
@@ -520,7 +558,8 @@ requests and validates:
 - Replace the development database password before any AWS deployment.
 - Restrict database and Redis security groups to application tasks in production.
 - Add HTTPS/ACM and private subnets before exposing the AWS ALB publicly.
-- Replace deterministic local embeddings with a managed or self-hosted embedding
-  model before production quality claims.
-- Add an external LLM provider only through environment-backed configuration.
+- Use a managed or self-hosted embedding model, a representative corpus, and a
+  measured evaluation report before making production retrieval-quality claims.
+- Add external embedding and LLM providers only through environment-backed
+  configuration; never hard-code API keys.
 - Keep evaluation reports versioned and reproducible.
