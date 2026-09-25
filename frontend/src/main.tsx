@@ -21,9 +21,16 @@ type ChatResponse = {
   route: string;
   confidence: string;
   evidence_sufficient: boolean;
-  citations: Array<{ chunk_id: string; document_name: string; score: number; metadata: Record<string, string> }>;
+  citations: Citation[];
   conversation_id?: string;
   message_id?: string;
+};
+
+type Citation = {
+  chunk_id: string;
+  document_name: string;
+  score: number;
+  metadata: Record<string, string | number | null>;
 };
 
 type IncidentAnalysis = {
@@ -73,6 +80,14 @@ type RepositoryIndexResponse = {
 };
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
+function formatAnswer(answer: string, citations: Citation[]): string {
+  const namesById = new Map(citations.map((citation) => [citation.chunk_id, citation.document_name]));
+  return answer.replace(/\[([0-9a-fA-F-]{36})\]/g, (marker, chunkId: string) => {
+    const documentName = namesById.get(chunkId);
+    return documentName ? `[${documentName}]` : marker;
+  });
+}
 
 function App() {
   const [query, setQuery] = useState("connection pool exhausted");
@@ -337,8 +352,17 @@ function App() {
           {conversationId && <button className="continue-button" disabled={loading || !query.trim()} onClick={continueConversation} type="button">Continue conversation <span>↗</span></button>}
           {assistant && <div className="assistant-answer">
             <div className="evidence-meta"><span>{assistant.route}</span><strong>{assistant.confidence} confidence</strong></div>
-            <p>{assistant.answer}</p>
-            <small>{assistant.citations.length} validated citation{assistant.citations.length === 1 ? "" : "s"}</small>
+            <p className="assistant-answer-text">{formatAnswer(assistant.answer, assistant.citations)}</p>
+            <div className="citation-list">
+              <small>{assistant.citations.length} validated source{assistant.citations.length === 1 ? "" : "s"}</small>
+              {assistant.citations.map((citation, index) => (
+                <div className="citation-item" key={citation.chunk_id}>
+                  <span>{index + 1}</span>
+                  <strong>{citation.document_name}</strong>
+                  <code>{citation.chunk_id}</code>
+                </div>
+              ))}
+            </div>
           </div>}
           <div className="results" aria-live="polite">
             {results.length === 0 ? <p className="empty-state">No evidence selected yet. Search the indexed workspace.</p> : results.map((result) => (

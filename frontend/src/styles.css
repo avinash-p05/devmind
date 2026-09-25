@@ -43,8 +43,13 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .assistant-button { width: 100%; margin-bottom: 20px; }
 .continue-button { width: 100%; margin-bottom: 20px; border-color: #71977e; background: transparent; color: #c8e66d; }
 .assistant-answer { border: 1px solid #71977e; padding: 16px; margin-bottom: 20px; background: #20352d; }
-.assistant-answer p { line-height: 1.5; color: #e8efe7; }
-.assistant-answer small { color: #c8e66d; font: 11px 'DM Mono', monospace; text-transform: uppercase; }
+.assistant-answer-text { white-space: pre-line; line-height: 1.5; color: #e8efe7; }
+.citation-list { display: grid; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid #496157; }
+.citation-list > small { color: #c8e66d; font: 11px 'DM Mono', monospace; text-transform: uppercase; }
+.citation-item { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px 8px; align-items: baseline; color: #d9e8db; }
+.citation-item > span { color: #c8e66d; font: 11px 'DM Mono', monospace; }
+.citation-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.citation-item code { grid-column: 2; color: #9eafa4; font: 10px 'DM Mono', monospace; overflow: hidden; text-overflow: ellipsis; }
 .results { display: grid; gap: 10px; }
 .empty-state { color: #789085; line-height: 1.5; }
 .evidence { border-left: 2px solid #71977e; background: #172722; padding: 14px 16px; }
