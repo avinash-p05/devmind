@@ -339,19 +339,18 @@ Queued ingestion reports `queued`, `processing`, `retrying`, `completed`, or
 failures are retried up to three attempts; final failures remain visible through
 `GET /ingestions/{job_id}`.
 
-### Configure real providers
+### Configure local embeddings and optional remote generation
 
-The default configuration uses deterministic local embeddings and a local
-evidence-grounded answer generator so tests and offline development remain
-repeatable. Real OpenAI-compatible providers can be enabled without changing
-retrieval or graph code. Docker Compose automatically reads these settings from
-the root `.env` file:
+The current recommended configuration uses deterministic local embeddings and
+the OpenAI-compatible LLM only for answer generation. This keeps indexing
+offline and avoids embedding API calls while preserving the grounded answer
+workflow. Docker Compose automatically reads these settings from the root
+`.env` file:
 
 ```powershell
-$env:EMBEDDING_PROVIDER="openai"
-$env:EMBEDDING_MODEL="text-embedding-3-small"
-$env:EMBEDDING_API_KEY="<set outside source control>"
-$env:EMBEDDING_BASE_URL="https://api.openai.com/v1"
+$env:EMBEDDING_PROVIDER="local"
+$env:EMBEDDING_MODEL="local-hash-v1"
+$env:EMBEDDING_API_KEY=""
 $env:EMBEDDING_DIMENSION="1536"
 $env:LLM_PROVIDER="openai"
 $env:LLM_MODEL="gpt-4o-mini"
@@ -366,10 +365,13 @@ cd D:\DevMind
 docker compose up -d --build --wait
 ```
 
-Never commit `.env` or print its secret values. The provider integration uses
-structured content parts for compatibility with OpenAI-compatible gateways and
-surfaces provider HTTP failures instead of returning a fabricated successful
-answer.
+The local embedding implementation is deterministic, produces 1,536-dimensional
+vectors, and requires no API key. The LLM provider remains independently
+configurable; set `LLM_PROVIDER=local` for a fully offline workflow or
+`LLM_PROVIDER=openai` for provider-backed answer generation. Never commit `.env`
+or print its secret values. The remote provider integration uses structured
+content parts for compatibility with OpenAI-compatible gateways and surfaces
+provider HTTP failures instead of returning a fabricated successful answer.
 
 The current PostgreSQL schema uses 1,536-dimensional pgvector columns. A
 different embedding dimension is rejected until the schema is migrated and
