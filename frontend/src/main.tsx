@@ -296,84 +296,98 @@ function App() {
   return (
     <main className="shell">
       <section className="hero">
-        <p className="eyebrow">DEV/01 · INCIDENT INTELLIGENCE</p>
+        <div>
+          <p className="eyebrow">DEV/01 · INCIDENT INTELLIGENCE</p>
+          <p className="hero-kicker">Engineering context, grounded.</p>
+        </div>
         <h1>DevMind</h1>
-        <p className="lede">Grounded answers for the moments when engineering context is scattered everywhere.</p>
-        <div className="status"><span /> {message}</div>
+        <div className="hero-meta">
+          <p className="lede">Ask questions across your docs, code, logs, and incidents.</p>
+          <div className="status"><span /> {message}</div>
+        </div>
       </section>
-      <section className="workspace-grid">
-        <section className="tool-panel">
-          <p className="eyebrow">01 · INGEST SOURCE</p>
-          <h2>Give the system a useful lead.</h2>
-          <label>Source name<input value={sourceName} onChange={(event) => setSourceName(event.target.value)} /></label>
-          <label>Source type<select value={sourceType} onChange={(event) => setSourceType(event.target.value)}>
-            <option value="document">document</option>
-            <option value="repository">repository</option>
-            <option value="log">log</option>
-            <option value="incident">incident</option>
-          </select></label>
-          <label>Load local text file<input type="file" accept=".md,.txt,.html,.htm,.log,.json,.py,.ts,.tsx,.js,.sql,.yaml,.yml" onChange={selectSourceFile} /></label>
-          <label>Incident or engineering text<textarea value={sourceContent} onChange={(event) => setSourceContent(event.target.value)} required placeholder="Paste a postmortem, stack trace, or runbook excerpt..." /></label>
-          <button disabled={loading || !sourceContent.trim()} onClick={() => void ingestSource()} type="button">Index source <span>↗</span></button>
-          <form className="repository-form" onSubmit={indexRepository}>
-            <p className="eyebrow">02 · INDEX REPOSITORY</p>
-            <label>Local repository or corpus path<input value={repositoryPath} onChange={(event) => setRepositoryPath(event.target.value)} placeholder="D:\DevMind\backend\data\demo-corpus" required /></label>
-            <button disabled={loading || !repositoryPath.trim()} type="submit">Index snapshot <span>↗</span></button>
-          </form>
-          <div className="incident-tool">
-            <p className="eyebrow">03 · ANALYZE INCIDENT</p>
-            <label>Service<input value={incidentService} onChange={(event) => setIncidentService(event.target.value)} /></label>
-            <label>Severity<select value={incidentSeverity} onChange={(event) => setIncidentSeverity(event.target.value)}><option>critical</option><option>high</option><option>medium</option><option>low</option></select></label>
-            <label>Question<textarea value={incidentQuery} onChange={(event) => setIncidentQuery(event.target.value)} /></label>
-            <button disabled={loading || !incidentQuery.trim()} onClick={analyzeIncident} type="button">Analyze incident <span>↗</span></button>
-            {incident && <div className="incident-result">
-              <div className="evidence-meta"><span>{incident.route}</span><strong>{incident.confidence} confidence</strong></div>
-              <h3>Root-cause hypothesis</h3>
-              <p>{incident.root_cause_hypothesis}</p>
-              <h3>Recommended next steps</h3>
-              <ul>{incident.recommended_next_steps.map((step) => <li key={step}>{step}</li>)}</ul>
-              <small>{incident.evidence.length} supporting evidence item{incident.evidence.length === 1 ? "" : "s"}</small>
-            </div>}
+      <section className="primary-workspace">
+        <div className="primary-heading">
+          <div>
+            <p className="eyebrow">01 · ASK DEVMIND</p>
+            <h2>What do you need to know?</h2>
           </div>
-        </section>
-        <section className="tool-panel search-panel">
-          <p className="eyebrow">02 · RETRIEVE EVIDENCE</p>
-          <h2>Ask the knowledge base.</h2>
-          <form className="search-form" onSubmit={runSearch}>
-            <input aria-label="Search query" value={query} onChange={(event) => setQuery(event.target.value)} />
-            <button disabled={loading || !query.trim()} type="submit">Search</button>
-          </form>
+          <span className="primary-hint">Answers are grounded in indexed evidence.</span>
+        </div>
+        <form className="ask-form" onSubmit={(event) => { event.preventDefault(); void askAssistant(); }}>
+          <input aria-label="Ask DevMind" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ask about a deployment, incident, service, or code path..." />
+          <button disabled={loading || !query.trim()} type="submit">Ask assistant <span>↗</span></button>
+        </form>
+        <div className="ask-options">
           <div className="mode-switch" role="group" aria-label="Retrieval mode">
+            <span>Retrieval</span>
             {(["hybrid", "semantic", "keyword"] as SearchMode[]).map((option) => (
               <button className={mode === option ? "active" : ""} key={option} onClick={() => setMode(option)} type="button">{option}</button>
             ))}
           </div>
-          <button className="assistant-button" disabled={loading || !query.trim()} onClick={askAssistant} type="button">Ask grounded assistant <span>↗</span></button>
           {conversationId && <button className="continue-button" disabled={loading || !query.trim()} onClick={continueConversation} type="button">Continue conversation <span>↗</span></button>}
-          {assistant && <div className="assistant-answer">
-            <div className="evidence-meta"><span>{assistant.route}</span><strong>{assistant.confidence} confidence</strong></div>
-            <p className="assistant-answer-text">{formatAnswer(assistant.answer, assistant.citations)}</p>
-            <div className="citation-list">
-              <small>{assistant.citations.length} validated source{assistant.citations.length === 1 ? "" : "s"}</small>
-              {assistant.citations.map((citation, index) => (
-                <div className="citation-item" key={citation.chunk_id}>
-                  <span>{index + 1}</span>
-                  <strong>{citation.document_name}</strong>
-                  <code>{citation.chunk_id}</code>
-                </div>
-              ))}
-            </div>
+        </div>
+        {assistant && <div className="assistant-answer">
+          <div className="evidence-meta"><span>{assistant.route}</span><strong>{assistant.confidence} confidence</strong></div>
+          <p className="assistant-answer-text">{formatAnswer(assistant.answer, assistant.citations)}</p>
+          <div className="citation-list">
+            <small>{assistant.citations.length} validated source{assistant.citations.length === 1 ? "" : "s"}</small>
+            {assistant.citations.map((citation, index) => (
+              <div className="citation-item" key={citation.chunk_id}>
+                <span>{index + 1}</span>
+                <strong>{citation.document_name}</strong>
+                <code>{citation.chunk_id}</code>
+              </div>
+            ))}
+          </div>
+        </div>}
+      </section>
+      <section className="secondary-grid">
+        <section className="tool-panel compact-panel">
+          <div className="panel-heading"><div><p className="eyebrow">02 · ADD KNOWLEDGE</p><h2>Index a source</h2></div><span className="panel-number">01</span></div>
+          <p className="panel-copy">Add a document, log, incident report, or repository snapshot to the workspace.</p>
+          <label>Source name<input value={sourceName} onChange={(event) => setSourceName(event.target.value)} /></label>
+          <div className="form-row">
+            <label>Type<select value={sourceType} onChange={(event) => setSourceType(event.target.value)}>
+              <option value="document">document</option><option value="repository">repository</option><option value="log">log</option><option value="incident">incident</option>
+            </select></label>
+            <label>Load file<input type="file" accept=".md,.txt,.html,.htm,.log,.json,.py,.ts,.tsx,.js,.sql,.yaml,.yml" onChange={selectSourceFile} /></label>
+          </div>
+          <label>Content<textarea value={sourceContent} onChange={(event) => setSourceContent(event.target.value)} required placeholder="Paste a runbook, postmortem, stack trace, or log excerpt..." /></label>
+          <button disabled={loading || !sourceContent.trim()} onClick={() => void ingestSource()} type="button">Index source <span>↗</span></button>
+          <form className="repository-form" onSubmit={indexRepository}>
+            <label>Repository or folder path<input value={repositoryPath} onChange={(event) => setRepositoryPath(event.target.value)} placeholder="D:\path\to\repository" required /></label>
+            <button disabled={loading || !repositoryPath.trim()} type="submit">Index snapshot <span>↗</span></button>
+          </form>
+        </section>
+        <section className="tool-panel compact-panel">
+          <div className="panel-heading"><div><p className="eyebrow">03 · INVESTIGATE</p><h2>Analyze an incident</h2></div><span className="panel-number">02</span></div>
+          <p className="panel-copy">Ask for a root-cause hypothesis and recommended next steps from incident evidence.</p>
+          <label>Service<input value={incidentService} onChange={(event) => setIncidentService(event.target.value)} /></label>
+          <label>Severity<select value={incidentSeverity} onChange={(event) => setIncidentSeverity(event.target.value)}><option>critical</option><option>high</option><option>medium</option><option>low</option></select></label>
+          <label>Question<textarea className="incident-question" value={incidentQuery} onChange={(event) => setIncidentQuery(event.target.value)} /></label>
+          <button disabled={loading || !incidentQuery.trim()} onClick={analyzeIncident} type="button">Analyze incident <span>↗</span></button>
+          {incident && <div className="incident-result">
+            <div className="evidence-meta"><span>{incident.route}</span><strong>{incident.confidence} confidence</strong></div>
+            <h3>Root-cause hypothesis</h3><p>{incident.root_cause_hypothesis}</p>
+            <h3>Recommended next steps</h3><ul>{incident.recommended_next_steps.map((step) => <li key={step}>{step}</li>)}</ul>
+            <small>{incident.evidence.length} supporting evidence item{incident.evidence.length === 1 ? "" : "s"}</small>
           </div>}
-          <div className="results" aria-live="polite">
-            {results.length === 0 ? <p className="empty-state">No evidence selected yet. Search the indexed workspace.</p> : results.map((result) => (
+        </section>
+      </section>
+      <section className="results-section">
+        <div className="section-heading"><div><p className="eyebrow">04 · SEARCH RESULTS</p><h2>Retrieved evidence</h2></div><button className="secondary-button" disabled={loading || !query.trim()} onClick={() => void runSearch()} type="button">Run search</button></div>
+        <div className="results" aria-live="polite">
+          {results.length === 0 ? <p className="empty-state">Search results will appear here when you run a focused retrieval.</p> : results.map((result) => (
               <article className="evidence" key={result.chunk_id}>
                 <div className="evidence-meta"><span>#{result.rank} · {result.retrieval_method}</span><strong>{result.score.toFixed(3)}</strong></div>
                 <h3>{result.document_name}</h3>
                 <p>{result.content}</p>
               </article>
             ))}
-          </div>
-        </section>
+        </div>
+      </section>
+      <section className="bottom-grid">
         <section className="documents-panel">
           <div>
             <p className="eyebrow">05 · INDEXED WORKSPACE</p>
@@ -389,8 +403,7 @@ function App() {
             ))}
           </div>
         </section>
-      </section>
-      <section className="evaluation-panel">
+        <section className="evaluation-panel">
         <div>
           <p className="eyebrow">04 · EVALUATION</p>
           <h2>Measure the evidence.</h2>
@@ -403,6 +416,7 @@ function App() {
           <div><strong>{Math.round((evaluation.summary.citation_accuracy ?? 0) * 100)}%</strong><span>citation accuracy</span></div>
           <div><strong>{Math.round(evaluation.summary.avg_latency_ms ?? 0)}ms</strong><span>avg latency</span></div>
         </div>}
+        </section>
       </section>
     </main>
   );
