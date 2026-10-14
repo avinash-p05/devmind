@@ -1,567 +1,204 @@
-# DevMind
+# DevMind - Incident Intelligence Platform
 
-DevMind is an incident-intelligence platform for grounded engineering answers
-across documentation, source code, logs, deployment records, and incident reports.
-It combines format-aware ingestion, PostgreSQL/pgvector retrieval, PostgreSQL
-full-text search, rank-aware reranking, Redis-backed jobs, and LangGraph workflow
-orchestration behind a FastAPI API and React UI.
+DevMind answers engineering questions ("why did payment-service fail after v2.14.0?",
+"where is OAuth redirect validation implemented?") from a team's documentation, source
+code, configuration, logs and incident reports, with citations to the exact sources.
 
-> **Implementation status:** This repository contains a working local POC with
-> configurable local or OpenAI-compatible embedding and LLM providers. The
-> default local mode is deterministic for repeatable tests; the Docker Compose
-> stack can use the provider settings from the ignored root `.env` file. AWS
-> infrastructure is defined but has not been independently verified as a live
-> production deployment.
-
-## System architecture
+**Stack:** Python, FastAPI, LangGraph, PostgreSQL + pgvector, Redis, OpenAI API (production)
+/ Ollama (local), fastembed, React, Docker Compose.
 
 ```mermaid
-flowchart TD
-    UI[React + TypeScript UI] --> API[FastAPI API]
-    API --> REQUEST[Request ID + observability middleware]
-    REQUEST --> GRAPH[LangGraph agent workflow]
-    REQUEST --> PERSIST[(Conversation + telemetry persistence)]
-    API --> INGEST_API[Document/repository/queue endpoints]
-    INGEST_API --> REDIS[(Redis queue + job state)]
-    REDIS --> WORKER[Async ingestion worker]
-    WORKER --> PARSE[Format-aware parser]
-    PARSE --> CHUNK[Normalize + chunk + metadata]
-    CHUNK --> EMBED[Embedding provider]
-    EMBED --> DB[(PostgreSQL + pgvector)]
-    GRAPH --> ANALYZE[Query analyzer/router]
-    ANALYZE --> CODE[Code-search tool]
-    ANALYZE --> RETRIEVE[Hybrid retrieval tool]
-    CODE --> RETRIEVE
-    RETRIEVE --> VECTOR[pgvector vector search]
-    RETRIEVE --> KEYWORD[PostgreSQL full-text search]
-    VECTOR --> FUSE[Candidate merge + RRF reranking]
-    KEYWORD --> FUSE
-    FUSE --> GENERATE[Grounded LLM/local generator]
-    GENERATE --> VALIDATE[Citation ID validator]
-    VALIDATE -->|invalid or missing citations| CORRECT[One bounded correction retry]
-    CORRECT --> VALIDATE
-    VALIDATE --> RESPONSE[Answer + evidence + metrics]
-    RESPONSE --> API
-    GRAPH --> DB
+flowchart LR
+    subgraph Ingestion
+      SRC[docs / code / config / logs / incidents] --> PARSE[parse + extract metadata]
+      PARSE --> CHUNK[chunk with overlap]
+      CHUNK --> EMB[embed in batches]
+      EMB --> PG[(Postgres<br/>pgvector HNSW + tsvector GIN)]
+      API1[POST /ingestions] --> REDIS[(Redis queue)] --> WORKER[worker, 3 attempts] --> PARSE
+    end
+    subgraph "Agent (LangGraph)"
+      Q[question] --> ROUTE[route: code / logs / incident / docs]
+      ROUTE --> TOOLS[retrieval tools]
+      TOOLS --> HYB[vector + keyword -> RRF -> rerank]
+      HYB --> PG
+      HYB --> GUARD{best similarity >= MIN_SCORE?}
+      GUARD -- no --> REFUSE["I don't know" - no LLM call]
+      GUARD -- yes --> GEN[LLM answer with numbered citations]
+      GEN --> VAL{citations valid?}
+      VAL -- no, once --> GEN
+      VAL -- yes --> ANS[answer + sources + tokens + latency]
+    end
 ```
 
-### Runtime components
+## Retrieval results
 
-| Component | Responsibility |
+Measured on the curated evaluation set (`backend/data/evaluation/v1.jsonl`: 60 questions,
+54 answerable + 6 unanswerable) over a **1,050-document corpus (1,196 chunks)**, top-k = 5,
+local `bge-small-en-v1.5` embeddings. Reproduce with `python scripts/evaluate.py --retrieval-only`.
+
+| Retriever | Recall@5 | Hit@5 | MRR | p50 latency |
+| --- | --- | --- | --- | --- |
+| Vector only (pgvector) | 0.920 | 0.963 | 0.907 | 14 ms |
+| Keyword only (Postgres FTS) | 0.691 | 0.759 | 0.688 | 15 ms |
+| **Hybrid: RRF + rerank** | **0.960** | **1.000** | **0.963** | 40 ms |
+
+Hybrid wins because the two retrievers fail differently. Vector search handles
+paraphrase ("resilience settings" -> `retries.yaml`). Keyword search handles exact
+identifiers (`req-7f3a91`, `DB_POOL_SIZE`, `INC-2026-1187`). Recall by question type
+(hybrid): code 1.00, config 1.00, docs 0.97, incidents 0.93, logs 0.89.
+
+### Full agent (answers, citations, refusals)
+
+The same 60 questions run end to end through the LangGraph agent with a local **llama3.2 (3B)**
+model in Ollama. Reproduce with `python scripts/evaluate.py`; the per-question report is in
+`backend/data/evaluation/agent-report.json`.
+
+| Metric | Result |
 | --- | --- |
-| React/Vite frontend | Ingest sources, index repositories, search evidence, ask questions, analyze incidents, and run evaluations |
-| FastAPI | HTTP API, request validation, request IDs, persistence coordination, and OpenAPI documentation |
-| LangGraph | Query routing, retrieval tool selection, bounded evidence retry, answer generation, citation validation, and incident analysis |
-| Embedding service | Deterministic local embeddings for tests or OpenAI-compatible remote embeddings for real indexing |
-| LLM service | Evidence-grounded local answer generation or OpenAI-compatible chat completion with provider/model/token metadata |
-| PostgreSQL | Documents, chunks, incidents, conversations, messages, retrieval events, and evaluation runs |
-| pgvector | Vector storage and cosine-distance candidate retrieval |
-| PostgreSQL FTS | Exact identifiers, error strings, paths, class names, and keyword retrieval |
-| Redis | Async ingestion queue and short-lived ingestion-job state |
-| Worker | Consumes Redis jobs, reports progress, retries failures up to three attempts, and persists parsed/embedded documents |
-| Terraform/AWS | ECR, S3, RDS PostgreSQL, ElastiCache Redis, ECS Fargate, and ALB infrastructure |
+| Retrieval recall@5 / hit@5 (agent) | 0.960 / 1.000 |
+| Answer correctness | 0.926 (50 / 54) |
+| Citation accuracy | 0.926 (valid citations 0.963) |
+| Unanswerable questions correctly refused | 6 / 6 (4 by the guardrail with no LLM call) |
+| Answerable questions wrongly refused | 0 / 54 |
+| Latency p50 / p95 | 1.2 s / 2.2 s |
+| Tokens per question | ~1,220 prompt + ~36 completion |
 
-## End-to-end data flows
+The 4 wrong answers are model errors, not retrieval misses: the right source was retrieved,
+but the 3B model quoted the wrong log line or left out part of the answer. A larger model
+(e.g. `gpt-4o-mini` in production) is the expected fix.
 
-### Ingestion flow
+**What the evaluation caught.** The first agent run reached recall@5 0.93. That is *below*
+the plain retriever (0.96), because fusing the routed tool's ranking with the general search
+gave double credit to overlapping hits. It filled the top 5 with incident reports for
+"where is incident severity normalized?". The agent now keeps the general ranking and uses
+the routed tool only to guarantee its source type is present. The run also showed the model
+sometimes answering with only `[1]`; the citation validator now treats that as invalid and
+retries.
 
-```text
-Document/file/repository
-        |
-        v
-Format-aware parser
-        |
-        v
-Text normalization and overlapping chunking
-        |
-        v
-Source metadata: path, format, service, URI, commit SHA
-        |
-        v
-Embedding generation
-        |
-        v
-documents + chunks + vector column in PostgreSQL
-```
+## How the LLM is called
 
-Supported parser inputs include plain text, Markdown, HTML, PDF, logs, incident
-reports, and local repository snapshots. The browser currently loads text-based
-files directly; PDF parsing is available in the backend parser and can be exposed
-through a multipart upload endpoint in a future UI phase.
+`app/llm.py` is the only module that talks to a model:
 
-### Retrieval and answer flow
+- **One client for local and production.** Ollama exposes the same API as OpenAI, so a
+  single `OpenAI(base_url, api_key)` client serves both. Local development points
+  `LLM_BASE_URL` at Ollama (`llama3.2`); production points it at `https://api.openai.com/v1`
+  (`gpt-4o-mini`). No code changes between the two.
+- **Cached client.** The client owns an HTTP connection pool, so it is created once
+  (`lru_cache`) instead of paying a TCP + TLS handshake on every request.
+- **Cost controls.** `temperature=0`, `max_completion_tokens` caps each answer, and a
+  `finish_reason == "length"` truncation is logged. Token usage comes from the API response,
+  not an estimate.
+- **The LLM is only called when it's needed.** If the best cosine similarity from retrieval is
+  below `MIN_SCORE`, the agent answers "I don't know" without calling the model at all.
+  The threshold is calibrated on the eval set: off-topic questions top out at 0.54, and
+  answerable ones start at 0.66, so it is 0.60.
+- The sync SDK call runs in `asyncio.to_thread`, so it does not block the event loop. Provider
+  errors (after the SDK's own retries) are returned as HTTP 503.
 
-```text
-Question
-  |
-  v
-LangGraph query analyzer
-  |----------------------|
-  v                      v
-Code-search tool      Hybrid retrieval
-                         |---------|
-                         v         v
-                   pgvector      PostgreSQL FTS
-                         \---------/
-                              |
-                              v
-                  Reciprocal-rank fusion
-                              |
-                              v
-                    Grounded provider/local answer
-                              |
-                              v
-                    Citation ID validation
-                         |       |
-                         |       v
-                         |  One correction retry
-                         |       |
-                         +-------+
-```
+## Agentic RAG (LangGraph)
 
-The workflow performs one bounded retrieval retry when no evidence is found and
-one bounded answer correction when citations are missing or reference IDs outside
-the retrieved evidence. Code-oriented questions are routed to the code-search
-tool, incident questions to incident analysis, log questions to log search, and
-other questions to hybrid retrieval. The citation check validates citation IDs
-against retrieved chunks; it is not a full natural-language entailment model.
+`app/agent/graph.py` runs these steps:
 
-Every chat response can expose the request ID, selected route/tool, retrieval
-latency, retry count, provider/model, estimated or provider-reported token count,
-and citation-validation result. Assistant messages persist this observability
-metadata alongside retrieval events.
+1. **route_question** - a rule-based router picks `code`, `logs`, `incident` or `docs`.
+   It's deterministic and free; an LLM router would add a model call to every question.
+2. **retrieve** - calls the route's tools concurrently: `search_code` (code + config only),
+   `search_logs`, `search_incidents`, plus the general `search_knowledge_base`. It fuses their
+   rankings with RRF.
+3. **guardrail** - refuses without an LLM call when retrieval is weak (above).
+4. **generate** - sources are numbered `[1]..[k]` in the prompt and the model must cite them.
+   The question is wrapped in `<question>` tags and the rules are repeated after it, so injected
+   instructions arrive as data.
+5. **validate_citations** - every `[n]` must refer to a retrieved source, and there must be at
+   least one. If not, the model gets **one** correction retry showing its bad answer. If the model
+   honestly says "I don't know", that counts as a refusal, not a citation failure.
 
-### Async ingestion flow
+## Retrieval pipeline
 
-```text
-Frontend/API -> POST /ingestions -> Redis list
-                                      |
-                                      v
-                                app.worker
-                                      |
-                                      v
-                          parse -> chunk -> embed -> PostgreSQL
-                                      |
-                                      v
-                         GET /ingestions/{job_id}
-```
+`app/retrieval/hybrid.py`:
 
-## Repository layout
+- **Vector:** `embedding <=> query` (cosine) on an HNSW index, top 20.
+- **Keyword:** a generated, GIN-indexed `tsvector` over chunk text **plus the file path**
+  (`config/retries.yaml` -> `config retries yaml`), so "which YAML file..." matches file names.
+  Query terms are OR-ed: `plainto_tsquery` ANDs every word, so full questions would almost
+  never match.
+- **Fusion:** Reciprocal Rank Fusion, `score = sum 1/(60 + rank)`. It uses rank positions only,
+  so cosine and `ts_rank` scores never need to be put on one scale.
+- **Rerank:** the fused candidates are rescored as 0.5 x normalized RRF + 0.5 x query-term
+  coverage of the chunk. That promotes chunks that answer the *whole* question.
 
-```text
-DevMind/
-├── backend/
-│   ├── app/
-│   │   ├── graph/              # LangGraph state, tools, and workflow
-│   │   ├── ingestion/          # Parsers, chunking, queues, bulk indexing
-│   │   ├── embeddings/         # Local and OpenAI-compatible embedding providers
-│   │   ├── llm/                # Grounded local and OpenAI-compatible generation
-│   │   ├── persistence/        # SQLAlchemy models, database, services
-│   │   ├── retrieval/          # Reranking and retrieval helpers
-│   │   ├── data/evaluation/    # Versioned evaluation cases
-│   │   ├── data/manual-test-docs/ # Small local test corpus
-│   │   ├── main.py             # FastAPI application and request middleware
-│   │   └── worker.py           # Redis-backed ingestion worker
-│   ├── scripts/
-│   │   ├── benchmark_ingestion.py
-│   │   ├── generate_demo_corpus.py
-│   │   └── run_evaluation.py
-│   ├── tests/
-│   └── pyproject.toml
-├── frontend/
-│   └── src/main.tsx            # React application and API integration
-├── infra/
-│   ├── postgres/init.sql
-│   └── terraform/              # AWS infrastructure
-├── .github/workflows/ci.yml
-├── docker-compose.yml
-└── README.md
-```
+## Ingestion
 
-## Data model
+`app/ingestion/`: parse (Markdown, text, HTML, PDF, logs, code, YAML/JSON) -> classify the
+source type from its path -> extract metadata (title, service, incident ID, severity, git
+commit) -> chunk at ~1,000 characters with 150 of overlap, breaking on line boundaries -> embed in
+batches of 64 (one model call per batch) -> store. The path and title are prepended to each
+chunk before embedding, so a chunk from the middle of a file still carries its context. Content
+hashes make re-ingestion idempotent.
 
-| Table | Purpose |
+Entry points: `POST /documents` (sync), `POST /ingestions` (Redis queue + worker, 3 attempts),
+`POST /repositories/index` and `scripts/ingest.py` (a whole directory or repository).
+
+## Evaluation methodology
+
+`app/evaluation/` (metric definitions are pure functions in `metrics.py`):
+
+| Metric | Definition |
 | --- | --- |
-| `documents` | Source identity, source type, URI, metadata, content hash, and timestamp |
-| `chunks` | Chunk content, ordinal, metadata, embedding, and document relation |
-| `incidents` | Persisted structured incident analyses |
-| `conversations` | Conversation identity and creation time |
-| `messages` | User/assistant content, latency, estimated token count, and request observability metadata |
-| `retrieval_events` | Retrieved chunk, score, rank, and retrieval method per assistant message |
-| `evaluation_runs` | Dataset version, mode, summary metrics, and case-level results |
+| Recall@k | share of a question's expected sources found in the top-k |
+| Hit@k / MRR | any expected source in the top-k / 1 / rank of the first one |
+| Answer correctness | every key fact is stated: >= 75% of the fact's terms appear in the answer (tolerates rephrasing, still requires the numbers and names); for unanswerable questions, correct = refused |
+| Citation accuracy | citations are valid and at least one cites an expected source |
+| Citation precision | share of the cited sources that are expected sources |
+| Refusal rates | false refusals on answerable questions, correct refusals on unanswerable ones |
+| Latency, tokens | end-to-end p50/p95; prompt + completion tokens from the API |
 
-All async relationship reads use eager loading to avoid SQLAlchemy
-`MissingGreenlet` failures.
+**Corpus.** `data/corpus/` holds 24 hand-written gold sources: 7 incident reports, a
+postmortem, runbooks, docs, TypeScript/Python code, YAML configs, logs and release notes.
+`scripts/generate_corpus.py` adds about 1,000 seeded *distractor* documents (routine logs,
+deploy records, ADRs, minor incidents and handlers across 15 services). They share
+vocabulary with the questions but never contain the answers, so ranking has to be good.
 
-## API surface
+## Run it
 
-OpenAPI documentation is available at `http://localhost:8000/docs`.
+```bash
+ollama pull llama3.2              # local LLM (https://ollama.com)
+cp .env.example .env              # inside Docker use LLM_BASE_URL=http://host.docker.internal:11434/v1
+docker compose up --build         # postgres, redis, api :8000, worker, frontend :5173
 
-| Method | Endpoint | Purpose |
+# index the 1,050-document evaluation corpus and run the benchmarks
+docker compose exec api python scripts/generate_corpus.py /tmp/corpus
+docker compose exec api python scripts/ingest.py /tmp/corpus
+docker compose exec api python scripts/evaluate.py --retrieval-only
+docker compose exec api python scripts/evaluate.py            # needs a configured LLM
+```
+
+Without Docker: `cd backend && uv sync --extra dev`, start Postgres (pgvector) and Redis,
+then `uv run uvicorn app.main:app --reload` and `uv run python -m app.worker`.
+Tests: `uv run pytest` (no database, model download or API key needed) and `uv run ruff check .`.
+
+API docs: <http://localhost:8000/docs>. Main endpoints: `POST /chat`, `POST /search`,
+`POST /incidents/analyze`, `POST /ingestions`, `POST /repositories/index`, `POST /evaluations/run`.
+
+## Configuration
+
+| Variable | Default | Notes |
 | --- | --- | --- |
-| `GET` | `/health` | Service health |
-| `POST` | `/documents` | Persist one document immediately |
-| `GET` | `/documents` | List indexed documents |
-| `POST` | `/repositories/index` | Index a local repository or corpus snapshot |
-| `POST` | `/ingestions` | Queue one document through Redis |
-| `GET` | `/ingestions/{job_id}` | Read async ingestion status |
-| `POST` | `/search` | Semantic, keyword, or hybrid retrieval |
-| `POST` | `/chat` | LangGraph grounded assistant |
-| `GET` | `/conversations/{conversation_id}` | Read persisted conversation messages |
-| `POST` | `/incidents/analyze` | Structured incident analysis |
-| `POST` | `/evaluations/run` | Run stored evaluation cases |
-| `GET` | `/evaluations/{run_id}` | Read an evaluation run |
-
-## Local development
-
-### Prerequisites
-
-- Windows PowerShell, macOS, or Linux
-- Python 3.12+
-- `uv`
-- Node.js 22+
-- Docker Desktop
-- Docker Compose
-
-### Start infrastructure
-
-```powershell
-cd D:\DevMind
-docker compose up -d postgres redis
-```
-
-### Start the API
-
-```powershell
-cd D:\DevMind\backend
-$env:PERSISTENCE_ENABLED="true"
-$env:DATABASE_URL="postgresql+asyncpg://devmind:devmind@localhost:5432/devmind"
-$env:REDIS_URL="redis://localhost:6379/0"
-uv sync --extra dev
-uv run uvicorn app.main:app --reload
-```
-
-### Start the worker
-
-In a second terminal:
-
-```powershell
-cd D:\DevMind\backend
-$env:PERSISTENCE_ENABLED="true"
-$env:DATABASE_URL="postgresql+asyncpg://devmind:devmind@localhost:5432/devmind"
-$env:REDIS_URL="redis://localhost:6379/0"
-uv run python -m app.worker
-```
-
-### Start the frontend
-
-In a third terminal:
-
-```powershell
-cd D:\DevMind\frontend
-npm ci
-npm run dev
-```
-
-Open:
-
-- UI: `http://localhost:5173`
-- API docs: `http://localhost:8000/docs`
-
-## Local test workflow
-
-### Index the included manual corpus
-
-In the frontend, enter:
-
-```text
-D:\DevMind\backend\data\manual-test-docs
-```
-
-Click **Index snapshot**. The corpus contains payment incident, database runbook,
-OAuth security, deployment, and log fixtures.
-
-Or use the API:
-
-```powershell
-$body = @{
-  path = "D:\DevMind\backend\data\manual-test-docs"
-  batch_size = 100
-} | ConvertTo-Json
-
-Invoke-RestMethod -Method Post `
-  -Uri http://localhost:8000/repositories/index `
-  -ContentType "application/json" `
-  -Body $body
-```
-
-Indexing the same folder again should report duplicates rather than creating
-additional documents.
-
-### Generate and index 1,000 documents
-
-```powershell
-cd D:\DevMind
-uv run --directory backend python -m scripts.generate_demo_corpus `
-  backend/data/demo-corpus --documents 1000
-```
-
-When the API is running locally, enter this path in the frontend:
-
-```text
-D:\DevMind\backend\data\demo-corpus
-```
-
-The Docker API container cannot access arbitrary Windows host paths unless they
-are mounted. For repository indexing, run the API with `uv` as shown above or
-add an explicit Compose volume mount.
-
-### Run the ingestion benchmark
-
-After PostgreSQL is available, this command generates and indexes the requested
-corpus through the same parser, chunker, embedding, and persistence pipeline:
-
-```powershell
-uv run --directory backend python -m scripts.benchmark_ingestion `
-  backend/data/benchmark-corpus `
-  --documents 1000 `
-  --output backend/data/evaluation/ingestion-report.json
-```
-
-The JSON report records discovered/indexed/duplicate/failed documents, database
-document and chunk totals, total ingestion time, measured embedding time, average
-processing time, and a second duplicate-detection pass. The benchmark runs the
-bulk pipeline directly; Redis queue throughput is a separate operational concern
-and is not silently represented as part of these timings.
-
-Queued ingestion reports `queued`, `processing`, `retrying`, `completed`, or
-`failed` status, a bounded progress percentage, and attempt count. Worker
-failures are retried up to three attempts; final failures remain visible through
-`GET /ingestions/{job_id}`.
-
-### Configure local embeddings and optional remote generation
-
-The current recommended configuration uses deterministic local embeddings and
-the OpenAI-compatible LLM only for answer generation. This keeps indexing
-offline and avoids embedding API calls while preserving the grounded answer
-workflow. Docker Compose automatically reads these settings from the root
-`.env` file:
-
-```powershell
-$env:EMBEDDING_PROVIDER="local"
-$env:EMBEDDING_MODEL="local-hash-v1"
-$env:EMBEDDING_API_KEY=""
-$env:EMBEDDING_DIMENSION="1536"
-$env:LLM_PROVIDER="openai"
-$env:LLM_MODEL="gpt-4o-mini"
-$env:LLM_API_KEY="<set outside source control>"
-$env:LLM_BASE_URL="https://api.openai.com/v1"
-```
-
-The same settings can be placed in `.env` before running:
-
-```powershell
-cd D:\DevMind
-docker compose up -d --build --wait
-```
-
-The local embedding implementation is deterministic, produces 1,536-dimensional
-vectors, and requires no API key. The LLM provider remains independently
-configurable; set `LLM_PROVIDER=local` for a fully offline workflow or
-`LLM_PROVIDER=openai` for provider-backed answer generation. Never commit `.env`
-or print its secret values. The remote provider integration uses structured
-content parts for compatibility with OpenAI-compatible gateways and surfaces
-provider HTTP failures instead of returning a fabricated successful answer.
-
-The current PostgreSQL schema uses 1,536-dimensional pgvector columns. A
-different embedding dimension is rejected until the schema is migrated and
-re-embedded. Provider and model metadata is stored with indexed chunks. Remote
-provider failures are surfaced rather than silently converted into successful
-answers.
-
-Generated answers must cite IDs belonging to the retrieved evidence. Invalid or
-missing citations trigger at most one corrective generation attempt; the graph
-then returns the bounded result rather than looping indefinitely.
-
-### Test the assistant
-
-Use the frontend query box with:
-
-```text
-Why did the payment service fail after deployment?
-```
-
-Then click **Ask grounded assistant** and **Continue conversation**. The second
-request reuses the returned conversation ID and verifies async-safe persistence.
-
-## Testing and quality checks
-
-### Backend
-
-```powershell
-cd D:\DevMind\backend
-uv run --extra dev pytest
-uv run --extra dev ruff check .
-```
-
-### Frontend
-
-```powershell
-cd D:\DevMind\frontend
-npm run lint
-npm run build
-```
-
-### Compose
-
-```powershell
-cd D:\DevMind
-docker compose config
-docker compose up -d --build --wait
-docker compose ps
-docker compose logs api
-docker compose logs worker
-```
-
-Stop without deleting volumes:
-
-```powershell
-docker compose down
-```
-
-Use `docker compose down -v` only when intentionally resetting PostgreSQL and
-Redis data.
-
-## Evaluation
-
-The versioned dataset contains 57 engineering questions in
-[backend/data/evaluation/cases.jsonl](backend/data/evaluation/cases.jsonl).
-Each case contains a question, expected sources, and key facts.
-
-Run the API-backed evaluation after indexing matching documents:
-
-```powershell
-cd D:\DevMind
-uv run --directory backend python -m scripts.run_evaluation `
-  --dataset v1 --top-k 5 `
-  --output backend/data/evaluation/report.json
-```
-
-The report measures:
-
-- recall@5
-- precision@5
-- answer correctness
-- citation accuracy
-- hallucination rate
-- average latency
-- estimated token usage
-- hybrid-versus-semantic recall comparison
-
-The 90% recall claim must come from a measured report. It is not hard-coded in
-the application.
-
-### Latest measured local reports
-
-The checked-in reports were generated on the local Docker PostgreSQL/pgvector
-stack using the deterministic local embedding provider:
-
-| Report | Measured result |
-| --- | --- |
-| Ingestion | 1,000 discovered and indexed, 0 failures, 1,005 total database documents, 1,005 chunks |
-| Ingestion duration | 11,682.94 ms total; 171.94 ms embedding time; 11.68 ms average indexed document |
-| Duplicate pass | 1,000 duplicates detected |
-| Hybrid recall@5 | 0.4211 |
-| Hybrid precision@5 | 0.0877 |
-| Hybrid answer correctness | 0.6140 |
-| Hybrid citation accuracy | 0.4386 |
-| Hybrid hallucination rate | 0.3860 |
-| Hybrid average latency | 21.24 ms |
-| Hybrid average estimated tokens | 212.32 |
-| Semantic recall@5 | 0.4211 |
-
-The current measured report does **not** support a 90% recall@5 claim, and
-hybrid retrieval did not outperform semantic retrieval on this run. See
-[backend/data/evaluation/report.json](backend/data/evaluation/report.json) and
-[backend/data/evaluation/ingestion-report.json](backend/data/evaluation/ingestion-report.json)
-for the complete machine-readable results.
-
-## AWS deployment
-
-Terraform in [infra/terraform/](infra/terraform/) provisions:
-
-- ECR repositories for API, worker, and frontend images
-- S3 source-artifact bucket
-- RDS PostgreSQL 16
-- ElastiCache Redis 7
-- ECS Fargate API and worker services
-- Application Load Balancer
-- Security groups and task execution role
-
-### Validate infrastructure
-
-Install Terraform, then:
-
-```powershell
-cd D:\DevMind\infra\terraform
-terraform init
-terraform fmt -check
-terraform validate
-```
-
-Create a private variables file:
-
-```powershell
-Copy-Item terraform.tfvars.example terraform.tfvars
-```
-
-Set real image URLs and a strong database password in `terraform.tfvars`.
-Never commit that file or AWS credentials.
-
-### Build and publish images
-
-```powershell
-docker build -t devmind-api:latest backend
-docker build -t devmind-worker:latest backend
-docker build -t devmind-frontend:latest frontend
-```
-
-Tag and push the images to the ECR repository URLs created by Terraform, then:
-
-```powershell
-terraform plan
-terraform apply
-```
-
-Retrieve the load-balancer URL:
-
-```powershell
-terraform output -raw api_url
-```
-
-The live-link claim should only be added after the deployed URL, ECS health,
-database connectivity, Redis worker processing, and evaluation report have all
-been verified.
-
-## CI
-
-[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on pushes and pull
-requests and validates:
-
-- backend dependency synchronization
-- backend tests
-- Ruff
-- frontend `npm ci`
-- frontend production build
-
-## Security and operational notes
-
-- Do not commit `.env`, `terraform.tfvars`, AWS credentials, or database passwords.
-- Replace the development database password before any AWS deployment.
-- Restrict database and Redis security groups to application tasks in production.
-- Add HTTPS/ACM and private subnets before exposing the AWS ALB publicly.
-- Use a managed or self-hosted embedding model, a representative corpus, and a
-  measured evaluation report before making production retrieval-quality claims.
-- Add external embedding and LLM providers only through environment-backed
-  configuration; never hard-code API keys.
-- Keep evaluation reports versioned and reproducible.
+| `LLM_BASE_URL` | `http://localhost:11434/v1` (Ollama) | production: `https://api.openai.com/v1` |
+| `LLM_API_KEY` | `ollama` | production: your OpenAI key |
+| `LLM_MODEL` | `llama3.2` | production: `gpt-4o-mini` |
+| `EMBEDDING_PROVIDER` | `local` | `local` = fastembed bge-small (CPU, free), or `openai` |
+| `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | called with `dimensions=EMBEDDING_DIMENSION` |
+| `EMBEDDING_DIMENSION` | `384` | size of the pgvector column; changing it needs a re-index |
+| `MIN_SCORE` | `0.60` | guardrail; re-calibrate per embedding model |
+| `MAX_COMPLETION_TOKENS` | `600` | per-answer cap |
+
+## Limitations and next steps
+
+- The router is rule-based. An LLM or classifier router would handle ambiguous questions
+  better, at the cost of a model call.
+- The reranker is lexical. A cross-encoder (e.g. `bge-reranker`) would rerank on meaning,
+  at roughly 50-100 ms per query on CPU.
+- Answer correctness is measured by key-fact term overlap. LLM-as-judge would score
+  free-form answers better, but adds cost and its own variance.
+- The eval set is small (60 questions) and curated by hand, so treat the numbers as a
+  regression benchmark for this corpus, not a general claim.

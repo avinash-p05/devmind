@@ -1,0 +1,60 @@
+{"id": "q01", "type": "code", "question": "Where is OAuth redirect URI validation implemented in auth-service?", "expected_sources": ["src/auth/redirect.ts", "docs/oauth.md"], "key_facts": ["validateRedirectUri"]}
+{"id": "q02", "type": "docs", "question": "What check runs before auth-service exchanges an OAuth authorization code for tokens?", "expected_sources": ["docs/oauth.md", "src/auth/redirect.ts"], "key_facts": ["redirect URI", "allowlist"]}
+{"id": "q03", "type": "docs", "question": "Does the OAuth redirect allowlist support wildcards?", "expected_sources": ["docs/oauth.md"], "key_facts": ["not support wildcards|exact match"]}
+{"id": "q04", "type": "code", "question": "What HTTP status does the OAuth callback return for a redirect URI that is not allowlisted?", "expected_sources": ["src/auth/redirect.ts", "docs/oauth.md"], "key_facts": ["400"]}
+{"id": "q05", "type": "docs", "question": "Which setting holds the allowed OAuth redirect URIs?", "expected_sources": ["docs/oauth.md", "src/auth/redirect.ts"], "key_facts": ["AUTH_ALLOWED_REDIRECTS"]}
+{"id": "q06", "type": "docs", "question": "How does the OAuth callback protect against CSRF?", "expected_sources": ["docs/oauth.md", "src/auth/redirect.ts"], "key_facts": ["state"]}
+{"id": "q07", "type": "docs", "question": "Which algorithm signs auth-service access tokens?", "expected_sources": ["docs/oauth.md"], "key_facts": ["RS256"]}
+{"id": "q08", "type": "incident", "question": "Why did logins fail after the auth-service 4.3.0 deployment?", "expected_sources": ["incidents/auth-certificate-expiry.md", "logs/auth-service.log"], "key_facts": ["certificate expired|certificate had expired|expired certificate"]}
+{"id": "q09", "type": "logs", "question": "What error did auth-service log when it failed to sign tokens on 2026-10-05?", "expected_sources": ["logs/auth-service.log"], "key_facts": ["certificate has expired"]}
+{"id": "q10", "type": "incident", "question": "What percentage of login requests failed during INC-2026-2017?", "expected_sources": ["incidents/auth-certificate-expiry.md"], "key_facts": ["31%"]}
+{"id": "q11", "type": "docs", "question": "How do I check when the auth-service signing certificate expires?", "expected_sources": ["runbooks/certificate-rotation.md"], "key_facts": ["openssl x509 -enddate"]}
+{"id": "q12", "type": "docs", "question": "How long is the auth-service signing certificate valid?", "expected_sources": ["runbooks/certificate-rotation.md", "docs/oauth.md"], "key_facts": ["90 days"]}
+{"id": "q13", "type": "incident", "question": "Which version was auth-service rolled back to after the certificate incident?", "expected_sources": ["incidents/auth-certificate-expiry.md", "logs/auth-service.log", "deployments/release-notes.md"], "key_facts": ["4.2.7"]}
+{"id": "q14", "type": "incident", "question": "Why did payment-service fail after the v2.14.0 deployment?", "expected_sources": ["incidents/payment-pool-exhaustion.md", "postmortems/payment-pool-exhaustion.md"], "key_facts": ["connection pool exhausted|pool was exhausted|pool exhaustion"]}
+{"id": "q15", "type": "incident", "question": "What change in payment-service v2.14.0 caused connections to be held too long?", "expected_sources": ["incidents/payment-pool-exhaustion.md", "postmortems/payment-pool-exhaustion.md"], "key_facts": ["fraud-check"]}
+{"id": "q16", "type": "incident", "question": "What share of checkout payments failed during INC-2026-1187?", "expected_sources": ["incidents/payment-pool-exhaustion.md"], "key_facts": ["38%"]}
+{"id": "q17", "type": "incident", "question": "Why was a rollback recommended for the payment pool exhaustion instead of increasing the pool size?", "expected_sources": ["postmortems/payment-pool-exhaustion.md"], "key_facts": ["only change", "headroom"]}
+{"id": "q18", "type": "incident", "question": "What action items came out of the payment-service pool exhaustion postmortem?", "expected_sources": ["postmortems/payment-pool-exhaustion.md"], "key_facts": ["release database connection before external HTTP call"]}
+{"id": "q19", "type": "logs", "question": "Which request IDs hit db.pool.exhausted errors in payment-service?", "expected_sources": ["logs/payment-service.log"], "key_facts": ["req-7f3a91"]}
+{"id": "q20", "type": "logs", "question": "How long did payment-service requests wait for a database connection before failing?", "expected_sources": ["logs/payment-service.log", "src/db/pool.py", "incidents/payment-pool-exhaustion.md"], "key_facts": ["5 seconds|5000"]}
+{"id": "q21", "type": "code", "question": "Which module creates the payment-service database connection pool?", "expected_sources": ["src/db/pool.py"], "key_facts": ["create_pool"]}
+{"id": "q22", "type": "code", "question": "What exception is raised when no database connection becomes free in payment-service?", "expected_sources": ["src/db/pool.py"], "key_facts": ["PoolExhaustedError"]}
+{"id": "q23", "type": "code", "question": "What is the acquire timeout for the payment-service connection pool?", "expected_sources": ["src/db/pool.py", "config/payment-service.yaml"], "key_facts": ["5 seconds|5.0|5000"]}
+{"id": "q24", "type": "docs", "question": "How is the database connection pool size calculated?", "expected_sources": ["docs/database.md"], "key_facts": ["max_connections", "reserved", "replicas"]}
+{"id": "q25", "type": "docs", "question": "Why is DB_POOL_SIZE set to 20 for payment-service?", "expected_sources": ["docs/database.md", "config/payment-service.yaml"], "key_facts": ["20"]}
+{"id": "q26", "type": "docs", "question": "What is PostgreSQL max_connections set to on the shared cluster?", "expected_sources": ["docs/database.md"], "key_facts": ["200"]}
+{"id": "q27", "type": "docs", "question": "How are database connections shared between requests?", "expected_sources": ["docs/database.md", "src/db/pool.py"], "key_facts": ["borrows a connection|borrow a connection|returns the connection"]}
+{"id": "q28", "type": "config", "question": "What is the request timeout for payment-service?", "expected_sources": ["config/payment-service.yaml"], "key_facts": ["3000|3 seconds"]}
+{"id": "q29", "type": "config", "question": "How many replicas does payment-service run?", "expected_sources": ["config/payment-service.yaml", "docs/database.md", "incidents/payment-pool-exhaustion.md"], "key_facts": ["6"]}
+{"id": "q30", "type": "config", "question": "Where is retry backoff configured for payment-service outbound calls?", "expected_sources": ["config/retries.yaml"], "key_facts": ["retries.yaml"]}
+{"id": "q31", "type": "config", "question": "What is the maximum number of retry attempts for payment-service outbound calls?", "expected_sources": ["config/retries.yaml"], "key_facts": ["4"]}
+{"id": "q32", "type": "config", "question": "How does payment-service space out retries?", "expected_sources": ["config/retries.yaml"], "key_facts": ["exponential backoff", "jitter"]}
+{"id": "q33", "type": "config", "question": "Which HTTP status codes does payment-service retry?", "expected_sources": ["config/retries.yaml"], "key_facts": ["502", "503", "504"]}
+{"id": "q34", "type": "docs", "question": "What should on-call check first when payment-service pool wait exceeds 1 second?", "expected_sources": ["runbooks/payment-service.md"], "key_facts": ["slow queries", "external calls"]}
+{"id": "q35", "type": "incident", "question": "What caused checkout requests to stall during INC-2026-1203?", "expected_sources": ["incidents/checkout-timeout.md"], "key_facts": ["no timeout|without a timeout|without a client timeout"]}
+{"id": "q36", "type": "incident", "question": "Which dependency was degraded during the checkout timeout incident?", "expected_sources": ["incidents/checkout-timeout.md"], "key_facts": ["inventory-service"]}
+{"id": "q37", "type": "incident", "question": "What timeout was added to inventory reservation calls after the checkout incident?", "expected_sources": ["incidents/checkout-timeout.md"], "key_facts": ["2 second"]}
+{"id": "q38", "type": "incident", "question": "When does the checkout circuit breaker open?", "expected_sources": ["incidents/checkout-timeout.md"], "key_facts": ["5 consecutive failures"]}
+{"id": "q39", "type": "incident", "question": "Why did inventory-sync jobs fail after v3.8.0?", "expected_sources": ["incidents/inventory-sync-timeouts.md"], "key_facts": ["timeout", "5 seconds"]}
+{"id": "q40", "type": "incident", "question": "What was the warehouse API client timeout restored to?", "expected_sources": ["incidents/inventory-sync-timeouts.md"], "key_facts": ["30 seconds"]}
+{"id": "q41", "type": "incident", "question": "Why were notifications delayed after notification-service v5.1.0?", "expected_sources": ["incidents/notification-delay.md", "src/notifications/worker.py"], "key_facts": ["batch size", "25"]}
+{"id": "q42", "type": "code", "question": "Which environment variable controls the notification worker batch size?", "expected_sources": ["src/notifications/worker.py"], "key_facts": ["NOTIFICATION_BATCH_SIZE"]}
+{"id": "q43", "type": "docs", "question": "How do I measure the backlog of a Redis worker queue?", "expected_sources": ["runbooks/redis-queue-backlog.md"], "key_facts": ["LLEN"]}
+{"id": "q44", "type": "docs", "question": "At what Redis memory usage should we alert?", "expected_sources": ["runbooks/redis-queue-backlog.md"], "key_facts": ["75%"]}
+{"id": "q45", "type": "incident", "question": "Why did image-processing jobs pile up after version 2.6.0?", "expected_sources": ["incidents/image-processing-backlog.md", "config/image-processing.yaml"], "key_facts": ["concurrency", "8"]}
+{"id": "q46", "type": "config", "question": "What is the worker concurrency for image-processing?", "expected_sources": ["config/image-processing.yaml", "incidents/image-processing-backlog.md"], "key_facts": ["32"]}
+{"id": "q47", "type": "incident", "question": "What made search-service slow after v7.4.0?", "expected_sources": ["incidents/search-latency.md"], "key_facts": ["missing", "index"]}
+{"id": "q48", "type": "incident", "question": "Which index fixed the search-service latency incident?", "expected_sources": ["incidents/search-latency.md"], "key_facts": ["tenant_id", "created_at"]}
+{"id": "q49", "type": "incident", "question": "How high did search p95 latency get during INC-2026-5086?", "expected_sources": ["incidents/search-latency.md"], "key_facts": ["2.4 seconds"]}
+{"id": "q50", "type": "code", "question": "Where is incident severity normalized?", "expected_sources": ["src/incidents/severity.py"], "key_facts": ["normalize_severity"]}
+{"id": "q51", "type": "code", "question": "What severity does an unknown severity value map to?", "expected_sources": ["src/incidents/severity.py"], "key_facts": ["SEV-3"]}
+{"id": "q52", "type": "code", "question": "Where should a new severity alias such as urgent be added?", "expected_sources": ["src/incidents/severity.py"], "key_facts": ["SEVERITY_ALIASES"]}
+{"id": "q53", "type": "code", "question": "What does the readiness endpoint check?", "expected_sources": ["src/api/health.py"], "key_facts": ["PostgreSQL", "Redis"]}
+{"id": "q54", "type": "docs", "question": "Which releases were rolled back in September and October 2026?", "expected_sources": ["deployments/release-notes.md"], "key_facts": ["v2.14.0", "v4.3.0"]}
+{"id": "q55", "type": "unanswerable", "question": "What is the parental leave policy for engineers?", "expected_sources": [], "key_facts": []}
+{"id": "q56", "type": "unanswerable", "question": "How do I configure Kafka consumer group rebalancing?", "expected_sources": [], "key_facts": []}
+{"id": "q57", "type": "unanswerable", "question": "What is the capital of Australia?", "expected_sources": [], "key_facts": []}
+{"id": "q58", "type": "unanswerable", "question": "Write me a poem about the ocean.", "expected_sources": [], "key_facts": []}
+{"id": "q59", "type": "unanswerable", "question": "What GPU instance type do we use to train recommendation models?", "expected_sources": [], "key_facts": []}
+{"id": "q60", "type": "unanswerable", "question": "Who won the 2018 football world cup?", "expected_sources": [], "key_facts": []}

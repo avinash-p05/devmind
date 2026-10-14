@@ -1,6 +1,10 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "devmind-api"
-version = "0.1.0"
+version = "1.0.0"
 description = "Incident intelligence API for DevMind"
 requires-python = ">=3.12"
 dependencies = [
@@ -14,6 +18,9 @@ dependencies = [
   "redis>=5.0,<7.0",
   "sqlalchemy[asyncio]>=2.0,<3.0",
   "uvicorn[standard]>=0.34,<1.0",
+  "fastembed>=0.5,<1.0",
+  "numpy>=1.26",
+  "openai>=1.60,<3.0",
 ]
 
 [project.optional-dependencies]
@@ -33,6 +40,7 @@ include = ["app*"]
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["data"]  # the evaluation corpus is fixture content, not our code
 target-version = "py312"
 
 [tool.ruff.lint]

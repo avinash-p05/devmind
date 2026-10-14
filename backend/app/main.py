@@ -1,270 +1,234 @@
+import logging
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
-from time import perf_counter
-from uuid import UUID, uuid4
+from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+import openai
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.service import analyze_incident, ask
 from app.config import get_settings
-from app.evaluation import get_evaluation, run_evaluation
-from app.graph.workflow import analyze_incident, answer_question
-from app.ingestion.bulk import index_repository
-from app.ingestion.queue import enqueue_ingestion, get_ingestion_job
-from app.persistence.database import get_session, initialize_database
-from app.persistence.service import (
-    create_persisted_document,
-    get_conversation,
-    list_persisted_documents,
-    save_chat_interaction,
-    save_incident_analysis,
-    search_persisted_documents,
-)
+from app.db import Document, EvaluationRun, get_session, init_db
+from app.evaluation.runner import evaluate, load_dataset
+from app.ingestion import queue
+from app.ingestion.parsers import parse_directory, parse_text
+from app.ingestion.pipeline import index_source, index_sources
+from app.llm import provider_info
+from app.retrieval.hybrid import search
 from app.schemas import (
     ChatRequest,
     ChatResponse,
-    ConversationResponse,
-    Document,
     DocumentCreate,
-    DocumentListResponse,
+    DocumentList,
+    DocumentOut,
     EvaluationRunRequest,
     EvaluationRunResponse,
     HealthResponse,
     IncidentAnalysis,
     IncidentAnalyzeRequest,
-    IngestionJobResponse,
+    IngestionJob,
     RepositoryIndexRequest,
     RepositoryIndexResponse,
     SearchRequest,
     SearchResponse,
     SearchResult,
+    StatsResponse,
 )
+from app.stats import workspace_stats
 
 settings = get_settings()
+logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
-    if settings.persistence_enabled:
-        await initialize_database()
+async def lifespan(app: FastAPI):
+    await init_db()
+    app.state.redis = queue.redis_client()
     yield
+    await app.state.redis.aclose()
 
 
-app = FastAPI(
-    title="DevMind API",
-    version="0.1.0",
-    description="Grounded incident intelligence API",
-    lifespan=lifespan,
-)
+app = FastAPI(title="DevMind API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-_documents: dict[UUID, Document] = {}
 
-
-@app.middleware("http")
-async def request_id_middleware(request: Request, call_next):
-    request_id = request.headers.get("X-Request-ID", str(uuid4()))
-    request.state.request_id = request_id
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-    return response
+@app.exception_handler(openai.APIError)
+async def llm_unavailable(request: Request, error: openai.APIError) -> JSONResponse:
+    # The SDK has already retried (max_retries=2). Tell the caller it's the model, not us.
+    logging.getLogger("devmind.api").error("LLM provider error: %s", error)
+    return JSONResponse(status_code=503, content={"detail": "LLM provider unavailable"})
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
-def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="devmind-api", environment=settings.app_env)
+async def health() -> HealthResponse:
+    return HealthResponse(status="ok", environment=settings.app_env, providers=provider_info())
 
 
-@app.post(
-    "/documents", response_model=Document, status_code=status.HTTP_201_CREATED, tags=["documents"]
-)
+@app.get("/stats", response_model=StatsResponse, tags=["system"])
+async def stats(session: AsyncSession = Depends(get_session)) -> StatsResponse:
+    """What is indexed, ingestion queue state, configured models, and the latest benchmark."""
+    return StatsResponse(**await workspace_stats(session, app.state.redis))
+
+
+# ---------- ingestion ----------
+
+
+@app.post("/documents", response_model=DocumentOut, status_code=201, tags=["ingestion"])
 async def create_document(
     payload: DocumentCreate, session: AsyncSession = Depends(get_session)
-) -> Document:
-    if settings.persistence_enabled:
-        return await create_persisted_document(session, payload)
-
-    document = Document(
-        name=payload.name,
-        source_type=payload.source_type,
-        uri=payload.uri,
-        metadata=payload.metadata,
-        content_length=len(payload.content),
-        created_at=datetime.now(UTC),
+) -> DocumentOut:
+    """Synchronous ingestion of a single document."""
+    document = await index_source(
+        session, parse_text(payload.name, payload.content, payload.source_type)
     )
-    _documents[document.id] = document
-    return document
+    return _document_out(document)
 
 
-@app.post(
-    "/ingestions",
-    response_model=IngestionJobResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-    tags=["ingestion"],
-)
-async def enqueue_document(payload: DocumentCreate) -> IngestionJobResponse:
-    if not settings.persistence_enabled:
-        raise HTTPException(status_code=503, detail="Persistence is required for queued ingestion")
-    return await enqueue_ingestion(payload)
+@app.get("/documents", response_model=DocumentList, tags=["ingestion"])
+async def list_documents(
+    limit: int = Query(default=100, ge=1, le=5000), session: AsyncSession = Depends(get_session)
+) -> DocumentList:
+    total = await session.scalar(select(func.count()).select_from(Document))
+    documents = await session.scalars(
+        select(Document).order_by(Document.created_at.desc()).limit(limit)
+    )
+    return DocumentList(items=[_document_out(d) for d in documents], total=total or 0)
 
 
-@app.get("/ingestions/{job_id}", response_model=IngestionJobResponse, tags=["ingestion"])
-async def read_ingestion(job_id: UUID) -> IngestionJobResponse:
-    job = await get_ingestion_job(job_id)
+@app.post("/ingestions", response_model=IngestionJob, status_code=202, tags=["ingestion"])
+async def enqueue_document(payload: DocumentCreate) -> IngestionJob:
+    """Async ingestion: queued in Redis and indexed by the worker."""
+    return await queue.enqueue(app.state.redis, payload)
+
+
+@app.get("/ingestions/{job_id}", response_model=IngestionJob, tags=["ingestion"])
+async def ingestion_status(job_id: UUID) -> IngestionJob:
+    job = await queue.get_job(app.state.redis, job_id)
     if job is None:
-        raise HTTPException(status_code=404, detail="Ingestion job not found")
+        raise HTTPException(status_code=404, detail="ingestion job not found")
     return job
 
 
-@app.post(
-    "/repositories/index",
-    response_model=RepositoryIndexResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-    tags=["ingestion"],
-)
-async def index_repository_route(
+@app.post("/repositories/index", response_model=RepositoryIndexResponse, tags=["ingestion"])
+async def index_repository(
     payload: RepositoryIndexRequest, session: AsyncSession = Depends(get_session)
 ) -> RepositoryIndexResponse:
-    if not settings.persistence_enabled:
-        raise HTTPException(
-            status_code=503, detail="Persistence is required for repository indexing"
-        )
-    stats = await index_repository(session, payload.path, batch_size=payload.batch_size)
-    return RepositoryIndexResponse(path=payload.path, **stats.__dict__)
+    try:
+        sources = parse_directory(payload.path)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    stats = await index_sources(session, sources, payload.batch_size)
+    return RepositoryIndexResponse(path=payload.path, **vars(stats))
 
 
-@app.get("/documents", response_model=DocumentListResponse, tags=["documents"])
-async def list_documents(session: AsyncSession = Depends(get_session)) -> DocumentListResponse:
-    if settings.persistence_enabled:
-        items = await list_persisted_documents(session)
-        return DocumentListResponse(items=items, total=len(items))
-
-    items = list(_documents.values())
-    return DocumentListResponse(items=items, total=len(items))
+# ---------- retrieval and agent ----------
 
 
 @app.post("/search", response_model=SearchResponse, tags=["retrieval"])
-async def search(
+async def search_chunks(
     payload: SearchRequest, session: AsyncSession = Depends(get_session)
 ) -> SearchResponse:
-    if not settings.persistence_enabled:
-        return SearchResponse(query=payload.query, mode=payload.mode, results=[])
-    results = await search_persisted_documents(session, payload.query, payload.top_k, payload.mode)
-    return SearchResponse(query=payload.query, mode=payload.mode, results=results)
+    retrieval = await search(session, payload.query, payload.top_k, payload.mode)
+    return SearchResponse(
+        query=payload.query,
+        mode=payload.mode,
+        top_similarity=retrieval.top_similarity,
+        results=[
+            SearchResult(
+                chunk_id=hit.chunk_id,
+                document_name=hit.path.rsplit("/", 1)[-1],
+                path=hit.path,
+                content=hit.content,
+                score=hit.score,
+                similarity=hit.similarity,
+                rank=rank,
+                retrieval_method=hit.method,
+                metadata=hit.metadata,
+            )
+            for rank, hit in enumerate(retrieval.hits, start=1)
+        ],
+    )
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["agent"])
-async def chat(
-    request: Request, payload: ChatRequest, session: AsyncSession = Depends(get_session)
-) -> ChatResponse:
-    if not settings.persistence_enabled:
-        return ChatResponse(
-            query=payload.query,
-            answer="Persistence is disabled; start the Docker stack to use the agent.",
-            route="unavailable",
-            confidence="low",
-            evidence_sufficient=False,
-            citations=[],
-            request_id=request.state.request_id,
-        )
-    started = perf_counter()
-    response = await answer_question(session, payload.query, payload.top_k)
-    conversation = await save_chat_interaction(
-        session,
-        conversation_id=payload.conversation_id,
-        query=payload.query,
-        response=response.answer,
-        latency_ms=round((perf_counter() - started) * 1000, 2),
-        estimated_tokens=response.estimated_tokens or max(1, len(response.answer) // 4),
-        observability={
-            "request_id": request.state.request_id,
-            "route": response.route,
-            "llm_provider": response.llm_provider,
-            "llm_model": response.llm_model,
-            "retrieval_latency_ms": response.retrieval_latency_ms,
-            "retry_count": response.retry_count,
-            "citation_validation_passed": response.citation_validation_passed,
-        },
-        evidence=[
-            SearchResult(
-                chunk_id=citation.chunk_id,
-                document_id=citation.chunk_id,
-                document_name=citation.document_name,
-                content="",
-                score=citation.score,
-                rank=index,
-                retrieval_method="citation",
-                metadata=citation.metadata,
-            )
-            for index, citation in enumerate(response.citations, start=1)
-        ],
-    )
-    response.conversation_id = conversation.id
-    response.message_id = conversation.messages[-1].id
-    response.estimated_tokens = conversation.messages[-1].estimated_tokens
-    response.request_id = request.state.request_id
-    return response
+async def chat(payload: ChatRequest, session: AsyncSession = Depends(get_session)) -> ChatResponse:
+    return await ask(session, payload.query, payload.top_k)
 
 
-@app.get(
-    "/conversations/{conversation_id}",
-    response_model=ConversationResponse,
-    tags=["conversations"],
-)
-async def read_conversation(
-    conversation_id: UUID, session: AsyncSession = Depends(get_session)
-) -> ConversationResponse:
-    conversation = await get_conversation(session, conversation_id)
-    if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    return conversation
-
-
-@app.post("/incidents/analyze", response_model=IncidentAnalysis, tags=["incidents"])
-async def analyze_incident_route(
+@app.post("/incidents/analyze", response_model=IncidentAnalysis, tags=["agent"])
+async def incident(
     payload: IncidentAnalyzeRequest, session: AsyncSession = Depends(get_session)
 ) -> IncidentAnalysis:
-    if not settings.persistence_enabled:
-        return IncidentAnalysis(
-            service=payload.service,
-            severity=payload.severity,
-            root_cause_hypothesis=(
-                "Persistence is disabled; start the Docker stack to analyze incidents."
-            ),
-            evidence=[],
-            affected_component=payload.service,
-            recommended_next_steps=[],
-            confidence="low",
-            route="unavailable",
-            unresolved_questions=["Start the persistent application environment."],
-            timeline=[],
-            contributing_factors=[],
-        )
-    analysis = await analyze_incident(session, payload)
-    return await save_incident_analysis(session, analysis)
+    return await analyze_incident(
+        session, payload.query, payload.service, payload.severity, payload.top_k
+    )
 
 
-@app.post("/evaluations/run", response_model=EvaluationRunResponse, tags=["evaluations"])
-async def start_evaluation(
+# ---------- evaluation ----------
+
+
+@app.post("/evaluations/run", response_model=EvaluationRunResponse, tags=["evaluation"])
+async def run_evaluation(
     payload: EvaluationRunRequest, session: AsyncSession = Depends(get_session)
 ) -> EvaluationRunResponse:
-    if not settings.persistence_enabled:
-        raise HTTPException(status_code=503, detail="Persistence is required for evaluations")
-    return await run_evaluation(session, payload)
+    try:
+        cases = load_dataset(payload.dataset_version)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    summary, results = await evaluate(
+        session,
+        cases,
+        mode=payload.mode,
+        top_k=payload.top_k,
+        retrieval_only=payload.retrieval_only,
+    )
+    run = EvaluationRun(
+        dataset=payload.dataset_version,
+        mode="retrieval:" + payload.mode if payload.retrieval_only else "agent",
+        summary=summary,
+        results=results,
+    )
+    session.add(run)
+    await session.commit()
+    return _evaluation_out(run)
 
 
-@app.get("/evaluations/{run_id}", response_model=EvaluationRunResponse, tags=["evaluations"])
-async def read_evaluation(
+@app.get("/evaluations/{run_id}", response_model=EvaluationRunResponse, tags=["evaluation"])
+async def get_evaluation(
     run_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> EvaluationRunResponse:
-    evaluation = await get_evaluation(session, run_id)
-    if evaluation is None:
-        raise HTTPException(status_code=404, detail="Evaluation run not found")
-    return evaluation
+    run = await session.get(EvaluationRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="evaluation run not found")
+    return _evaluation_out(run)
+
+
+def _document_out(document: Document) -> DocumentOut:
+    return DocumentOut(
+        id=document.id,
+        name=document.name,
+        path=document.path,
+        source_type=document.source_type,
+        content_length=document.content_length,
+        metadata=document.metadata_json,
+        created_at=document.created_at,
+    )
+
+
+def _evaluation_out(run: EvaluationRun) -> EvaluationRunResponse:
+    return EvaluationRunResponse(
+        id=run.id,
+        dataset_version=run.dataset,
+        mode=run.mode,
+        summary=run.summary,
+        results=run.results,
+        created_at=run.created_at,
+    )

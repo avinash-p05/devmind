@@ -1,0 +1,8 @@
+service: image-processing
+worker:
+  replicas: 4
+  concurrency: 32            # jobs processed in parallel per worker
+  queue: image-jobs
+  max_job_seconds: 120
+thumbnails:
+  sizes: [64, 256, 1024]

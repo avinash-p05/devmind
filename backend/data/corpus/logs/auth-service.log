@@ -1,0 +1,5 @@
+2026-10-05T09:04:30Z INFO  deploy  service=auth-service version=4.3.0 status=rollout_complete
+2026-10-05T09:07:12Z ERROR signer  request_id=req-a1f0c2 failed to load signing certificate /etc/auth/signing.pem: x509: certificate has expired (notAfter=2026-10-01T00:00:00Z)
+2026-10-05T09:07:12Z ERROR http    request_id=req-a1f0c2 route=POST /oauth/token status=500
+2026-10-05T09:07:15Z WARN  http    request_id=req-a1f3d9 route=GET /oauth/callback status=401 reason=token_signing_failed
+2026-10-05T09:29:04Z INFO  deploy  service=auth-service version=4.2.7 action=rollback

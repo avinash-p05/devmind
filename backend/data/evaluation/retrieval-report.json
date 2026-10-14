@@ -1,0 +1,138 @@
+{
+  "dataset": "v1",
+  "cases": 60,
+  "top_k": 5,
+  "vector": {
+    "cases": 60,
+    "answerable_cases": 54,
+    "unanswerable_cases": 6,
+    "recall_at_k": 0.9198,
+    "hit_rate_at_k": 0.963,
+    "mrr": 0.9074,
+    "precision_at_k": 0.3108,
+    "latency_ms_p50": 15.4,
+    "latency_ms_p95": 19.2,
+    "recall_by_type": {
+      "code": 0.9,
+      "config": 0.9524,
+      "docs": 1.0,
+      "incident": 0.8772,
+      "logs": 0.7778
+    }
+  },
+  "keyword": {
+    "cases": 60,
+    "answerable_cases": 54,
+    "unanswerable_cases": 6,
+    "recall_at_k": 0.6914,
+    "hit_rate_at_k": 0.7593,
+    "mrr": 0.6883,
+    "precision_at_k": 0.2009,
+    "latency_ms_p50": 15.5,
+    "latency_ms_p95": 39.4,
+    "recall_by_type": {
+      "code": 0.85,
+      "config": 0.1905,
+      "docs": 0.8,
+      "incident": 0.7632,
+      "logs": 0.3333
+    }
+  },
+  "hybrid": {
+    "cases": 60,
+    "answerable_cases": 54,
+    "unanswerable_cases": 6,
+    "recall_at_k": 0.9599,
+    "hit_rate_at_k": 1.0,
+    "mrr": 0.963,
+    "precision_at_k": 0.3148,
+    "latency_ms_p50": 36.9,
+    "latency_ms_p95": 59.3,
+    "recall_by_type": {
+      "code": 1.0,
+      "config": 1.0,
+      "docs": 0.9667,
+      "incident": 0.9298,
+      "logs": 0.8889
+    }
+  },
+  "misses_hybrid": [
+    {
+      "id": "q13",
+      "question": "Which version was auth-service rolled back to after the certificate incident?",
+      "expected_sources": [
+        "incidents/auth-certificate-expiry.md",
+        "logs/auth-service.log",
+        "deployments/release-notes.md"
+      ],
+      "retrieved_sources": [
+        "incidents/auth-certificate-expiry.md",
+        "incidents/auth-certificate-expiry.md",
+        "logs/auth-service.log",
+        "deployments/auth-service/v1.911.md",
+        "deployments/auth-service/v1.41.md"
+      ]
+    },
+    {
+      "id": "q14",
+      "question": "Why did payment-service fail after the v2.14.0 deployment?",
+      "expected_sources": [
+        "incidents/payment-pool-exhaustion.md",
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "retrieved_sources": [
+        "incidents/payment-pool-exhaustion.md",
+        "runbooks/payment-service.md",
+        "logs/payment-service.log",
+        "src/payment-service/handler_219.py",
+        "src/payment-service/handler_879.py"
+      ]
+    },
+    {
+      "id": "q20",
+      "question": "How long did payment-service requests wait for a database connection before failing?",
+      "expected_sources": [
+        "logs/payment-service.log",
+        "src/db/pool.py",
+        "incidents/payment-pool-exhaustion.md"
+      ],
+      "retrieved_sources": [
+        "incidents/payment-pool-exhaustion.md",
+        "runbooks/payment-service.md",
+        "postmortems/payment-pool-exhaustion.md",
+        "incidents/payment-pool-exhaustion.md",
+        "logs/payment-service.log"
+      ]
+    },
+    {
+      "id": "q25",
+      "question": "Why is DB_POOL_SIZE set to 20 for payment-service?",
+      "expected_sources": [
+        "docs/database.md",
+        "config/payment-service.yaml"
+      ],
+      "retrieved_sources": [
+        "src/db/pool.py",
+        "logs/payment-service.log",
+        "docs/database.md",
+        "incidents/payment-pool-exhaustion.md",
+        "docs/database.md"
+      ]
+    },
+    {
+      "id": "q41",
+      "question": "Why were notifications delayed after notification-service v5.1.0?",
+      "expected_sources": [
+        "incidents/notification-delay.md",
+        "src/notifications/worker.py"
+      ],
+      "retrieved_sources": [
+        "incidents/notification-delay.md",
+        "incidents/notification-delay.md",
+        "src/notification-service/handler_329.py",
+        "src/notification-service/handler_239.py",
+        "src/notification-service/handler_119.py"
+      ]
+    }
+  ]
+}
