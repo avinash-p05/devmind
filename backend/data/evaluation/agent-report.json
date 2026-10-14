@@ -1,0 +1,2019 @@
+{
+  "dataset": "v1",
+  "cases": 60,
+  "top_k": 5,
+  "providers": {
+    "llm_base_url": "http://localhost:11434/v1",
+    "llm_model": "llama3.2",
+    "embedding_provider": "local"
+  },
+  "agent": {
+    "cases": 60,
+    "answerable_cases": 54,
+    "unanswerable_cases": 6,
+    "recall_at_k": 0.9599,
+    "hit_rate_at_k": 1.0,
+    "mrr": 0.963,
+    "precision_at_k": 0.3148,
+    "latency_ms_p50": 1212.9,
+    "latency_ms_p95": 2219.6,
+    "recall_by_type": {
+      "code": 1.0,
+      "config": 1.0,
+      "docs": 0.9667,
+      "incident": 0.9298,
+      "logs": 0.8889
+    },
+    "answer_correctness": 0.9259,
+    "citation_accuracy": 0.9259,
+    "citation_precision": 0.9074,
+    "citation_valid_rate": 0.963,
+    "false_refusal_rate": 0.0,
+    "correct_refusal_rate": 1.0,
+    "avg_prompt_tokens": 1219.8,
+    "avg_completion_tokens": 35.6,
+    "total_tokens": 75328,
+    "llm_calls": 63
+  },
+  "results": [
+    {
+      "id": "q01",
+      "question": "Where is OAuth redirect URI validation implemented in auth-service?",
+      "type": "code",
+      "expected_sources": [
+        "src/auth/redirect.ts",
+        "docs/oauth.md"
+      ],
+      "retrieved_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts",
+        "src/auth/redirect.ts",
+        "docs/oauth.md",
+        "logs/auth-service.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.6666666666666666,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The OAuth redirect URI validation is implemented in `src/auth/redirect.ts` [1][2][3].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts",
+        "src/auth/redirect.ts"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "code",
+      "prompt_tokens": 1055,
+      "completion_tokens": 23,
+      "llm_calls": 1,
+      "latency_ms": 5733.7
+    },
+    {
+      "id": "q02",
+      "question": "What check runs before auth-service exchanges an OAuth authorization code for tokens?",
+      "type": "docs",
+      "expected_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts"
+      ],
+      "retrieved_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts",
+        "src/auth/redirect.ts",
+        "runbooks/certificate-rotation.md",
+        "docs/oauth.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.6666666666666666,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The check that runs before auth-service exchanges an OAuth authorization code for tokens is exact-match validation of the redirect URI against the allowlist in the `AUTH_ALLOWED_REDIRECTS` setting, which is implemented in `validateRedirectUri` function in `src/auth/redirect.ts` [2].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/auth/redirect.ts"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "code",
+      "prompt_tokens": 1029,
+      "completion_tokens": 58,
+      "llm_calls": 1,
+      "latency_ms": 1364.3
+    },
+    {
+      "id": "q03",
+      "question": "Does the OAuth redirect allowlist support wildcards?",
+      "type": "docs",
+      "expected_sources": [
+        "docs/oauth.md"
+      ],
+      "retrieved_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts",
+        "src/auth/redirect.ts",
+        "docs/adr/reporting-service-188.md",
+        "docs/adr/reporting-service-248.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "No, the OAuth redirect allowlist does not support wildcards [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "docs/oauth.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 904,
+      "completion_tokens": 16,
+      "llm_calls": 1,
+      "latency_ms": 423.9
+    },
+    {
+      "id": "q04",
+      "question": "What HTTP status does the OAuth callback return for a redirect URI that is not allowlisted?",
+      "type": "code",
+      "expected_sources": [
+        "src/auth/redirect.ts",
+        "docs/oauth.md"
+      ],
+      "retrieved_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts",
+        "src/auth/redirect.ts",
+        "logs/api-gateway/2026-08-09-120.log",
+        "logs/api-gateway/2026-08-22-105.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.5,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The OAuth callback returns HTTP status 400 for a redirect URI that is not allowlisted, as stated in [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "docs/oauth.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 2541,
+      "completion_tokens": 44,
+      "llm_calls": 2,
+      "latency_ms": 1186.7
+    },
+    {
+      "id": "q05",
+      "question": "Which setting holds the allowed OAuth redirect URIs?",
+      "type": "docs",
+      "expected_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts"
+      ],
+      "retrieved_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts",
+        "src/auth/redirect.ts",
+        "docs/oauth.md",
+        "src/db/pool.py"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.6666666666666666,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The setting that holds the allowed OAuth redirect URIs is specified in the `config` object, which is used in the `handleOAuthCallback` function.",
+      "refused": false,
+      "answer_correct": false,
+      "cited_sources": [],
+      "citation_valid": false,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "code",
+      "prompt_tokens": 2224,
+      "completion_tokens": 50,
+      "llm_calls": 2,
+      "latency_ms": 1198.8
+    },
+    {
+      "id": "q06",
+      "question": "How does the OAuth callback protect against CSRF?",
+      "type": "docs",
+      "expected_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts"
+      ],
+      "retrieved_sources": [
+        "docs/oauth.md",
+        "src/auth/redirect.ts",
+        "docs/oauth.md",
+        "src/auth/redirect.ts",
+        "incidents/auth-certificate-expiry.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.6666666666666666,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The OAuth callback protects against CSRF by comparing the `state` parameter with the value stored in the session. If they do not match, the callback returns a 400 error with an error message indicating a \"state mismatch\" ([4]).",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/auth/redirect.ts"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 995,
+      "completion_tokens": 48,
+      "llm_calls": 1,
+      "latency_ms": 1140.8
+    },
+    {
+      "id": "q07",
+      "question": "Which algorithm signs auth-service access tokens?",
+      "type": "docs",
+      "expected_sources": [
+        "docs/oauth.md"
+      ],
+      "retrieved_sources": [
+        "docs/oauth.md",
+        "docs/oauth.md",
+        "logs/auth-service.log",
+        "src/auth/redirect.ts",
+        "deployments/auth-service/v1.131.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The access tokens are signed with RS256. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "docs/oauth.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1000,
+      "completion_tokens": 13,
+      "llm_calls": 1,
+      "latency_ms": 778.1
+    },
+    {
+      "id": "q08",
+      "question": "Why did logins fail after the auth-service 4.3.0 deployment?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/auth-certificate-expiry.md",
+        "logs/auth-service.log"
+      ],
+      "retrieved_sources": [
+        "incidents/auth-certificate-expiry.md",
+        "logs/auth-service.log",
+        "deployments/auth-service/v1.86.md",
+        "deployments/auth-service/v1.296.md",
+        "incidents/auth-certificate-expiry.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.5,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to the context, logins failed after the auth-service 4.3.0 deployment because the OAuth signing certificate had expired [1]. The application logs showed failures while loading the certificate, and the previous production version used an older valid certificate [5].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/auth-certificate-expiry.md",
+        "incidents/auth-certificate-expiry.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 983,
+      "completion_tokens": 53,
+      "llm_calls": 1,
+      "latency_ms": 1838.8
+    },
+    {
+      "id": "q09",
+      "question": "What error did auth-service log when it failed to sign tokens on 2026-10-05?",
+      "type": "logs",
+      "expected_sources": [
+        "logs/auth-service.log"
+      ],
+      "retrieved_sources": [
+        "logs/auth-service.log",
+        "incidents/auth-certificate-expiry.md",
+        "deployments/auth-service/v1.86.md",
+        "deployments/auth-service/v1.296.md",
+        "deployments/auth-service/v1.566.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The error logged by auth-service when it failed to sign tokens on 2026-10-05 was \"token_signing_failed\" [2].",
+      "refused": false,
+      "answer_correct": false,
+      "cited_sources": [
+        "incidents/auth-certificate-expiry.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "incident",
+      "prompt_tokens": 1952,
+      "completion_tokens": 59,
+      "llm_calls": 2,
+      "latency_ms": 1641.3
+    },
+    {
+      "id": "q10",
+      "question": "What percentage of login requests failed during INC-2026-2017?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/auth-certificate-expiry.md"
+      ],
+      "retrieved_sources": [
+        "incidents/auth-certificate-expiry.md",
+        "logs/api-gateway/2026-08-01-420.log",
+        "logs/api-gateway/2026-08-07-90.log",
+        "logs/api-gateway/2026-08-04-675.log",
+        "logs/api-gateway/2026-08-05-60.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "Approximately 31% of login requests failed during INC-2026-2017, as stated in the Summary section of the incident report [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/auth-certificate-expiry.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1862,
+      "completion_tokens": 32,
+      "llm_calls": 1,
+      "latency_ms": 1420.4
+    },
+    {
+      "id": "q11",
+      "question": "How do I check when the auth-service signing certificate expires?",
+      "type": "docs",
+      "expected_sources": [
+        "runbooks/certificate-rotation.md"
+      ],
+      "retrieved_sources": [
+        "runbooks/certificate-rotation.md",
+        "logs/auth-service.log",
+        "incidents/auth-certificate-expiry.md",
+        "incidents/auth-certificate-expiry.md",
+        "docs/oauth.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "You can check when the auth-service signing certificate expires by running the command `openssl x509 -enddate -noout -in /etc/auth/signing.pem` [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "runbooks/certificate-rotation.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1045,
+      "completion_tokens": 36,
+      "llm_calls": 1,
+      "latency_ms": 1278.8
+    },
+    {
+      "id": "q12",
+      "question": "How long is the auth-service signing certificate valid?",
+      "type": "docs",
+      "expected_sources": [
+        "runbooks/certificate-rotation.md",
+        "docs/oauth.md"
+      ],
+      "retrieved_sources": [
+        "runbooks/certificate-rotation.md",
+        "docs/oauth.md",
+        "logs/auth-service.log",
+        "incidents/auth-certificate-expiry.md",
+        "deployments/auth-service/v1.851.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.4,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The auth-service signing certificate is valid for 90 days, as stated in the runbook [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "runbooks/certificate-rotation.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 906,
+      "completion_tokens": 22,
+      "llm_calls": 1,
+      "latency_ms": 879.4
+    },
+    {
+      "id": "q13",
+      "question": "Which version was auth-service rolled back to after the certificate incident?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/auth-certificate-expiry.md",
+        "logs/auth-service.log",
+        "deployments/release-notes.md"
+      ],
+      "retrieved_sources": [
+        "incidents/auth-certificate-expiry.md",
+        "incidents/auth-certificate-expiry.md",
+        "logs/auth-service.log",
+        "deployments/auth-service/v1.911.md",
+        "deployments/auth-service/v1.41.md"
+      ],
+      "retrieval_recall": 0.6666666666666666,
+      "retrieval_precision": 0.5,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The auth-service was rolled back to version 4.2.7 after the certificate incident [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/auth-certificate-expiry.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 980,
+      "completion_tokens": 22,
+      "llm_calls": 1,
+      "latency_ms": 918.4
+    },
+    {
+      "id": "q14",
+      "question": "Why did payment-service fail after the v2.14.0 deployment?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/payment-pool-exhaustion.md",
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "retrieved_sources": [
+        "incidents/payment-pool-exhaustion.md",
+        "runbooks/payment-service.md",
+        "logs/payment-service.log",
+        "src/payment-service/handler_219.py",
+        "src/payment-service/handler_879.py"
+      ],
+      "retrieval_recall": 0.5,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The payment-service failed after the v2.14.0 deployment because the database connection pool was exhausted, with all 20 connections being checked out and new requests timing out after waiting 5 seconds for a connection [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/payment-pool-exhaustion.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1142,
+      "completion_tokens": 46,
+      "llm_calls": 1,
+      "latency_ms": 1758.1
+    },
+    {
+      "id": "q15",
+      "question": "What change in payment-service v2.14.0 caused connections to be held too long?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/payment-pool-exhaustion.md",
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "retrieved_sources": [
+        "postmortems/payment-pool-exhaustion.md",
+        "incidents/payment-pool-exhaustion.md",
+        "runbooks/payment-service.md",
+        "docs/database.md",
+        "logs/payment-service.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.4,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The change in payment-service v2.14.0 that caused connections to be held too long was the introduction of the fraud-check HTTP call [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1432,
+      "completion_tokens": 32,
+      "llm_calls": 1,
+      "latency_ms": 1270.2
+    },
+    {
+      "id": "q16",
+      "question": "What share of checkout payments failed during INC-2026-1187?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/payment-pool-exhaustion.md"
+      ],
+      "retrieved_sources": [
+        "incidents/payment-pool-exhaustion.md",
+        "incidents/checkout-timeout.md",
+        "logs/checkout-service/2026-08-02-85.log",
+        "logs/payment-service.log",
+        "logs/checkout-service/2026-08-18-325.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "38% of checkout payments failed during INC-2026-1187 [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/payment-pool-exhaustion.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1539,
+      "completion_tokens": 18,
+      "llm_calls": 1,
+      "latency_ms": 965.6
+    },
+    {
+      "id": "q17",
+      "question": "Why was a rollback recommended for the payment pool exhaustion instead of increasing the pool size?",
+      "type": "incident",
+      "expected_sources": [
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "retrieved_sources": [
+        "postmortems/payment-pool-exhaustion.md",
+        "logs/payment-service.log",
+        "incidents/payment-pool-exhaustion.md",
+        "src/db/pool.py",
+        "incidents/payment-pool-exhaustion.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The recommendation to roll back to v2.13.4 was based on three pieces of evidence: \n\n1. Errors started 4 minutes after the v2.14.0 rollout finished, and v2.14.0 was the only change shipped to payment-service that day. [1]\n2. Pool wait time rose on every replica at the same time, which points at a code change rather than a single unhealthy host. [1]\n3. Increasing the pool size was not safe: the database already serves 6 replicas and the pool-sizing rule in docs/database.md leaves no headroom. [1]\n\n[n]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1502,
+      "completion_tokens": 127,
+      "llm_calls": 1,
+      "latency_ms": 3121.2
+    },
+    {
+      "id": "q18",
+      "question": "What action items came out of the payment-service pool exhaustion postmortem?",
+      "type": "incident",
+      "expected_sources": [
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "retrieved_sources": [
+        "postmortems/payment-pool-exhaustion.md",
+        "incidents/payment-pool-exhaustion.md",
+        "incidents/payment-pool-exhaustion.md",
+        "logs/payment-service.log",
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.3333333333333333,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "Action items from the postmortem are:\n\n- Release the database connection before any external HTTP call (owner: payments team) [1].\n- Alert when pool wait time exceeds 1 second for 2 minutes [n].\n- Add a load test that runs the fraud-check path at peak traffic before release [n].\n\n(I will correct the second point to cite a source, as it was not supported by the previous answer)\n\n- Alert when pool wait time exceeds 1 second for 2 minutes [2].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "postmortems/payment-pool-exhaustion.md",
+        "incidents/payment-pool-exhaustion.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 0.5,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 2783,
+      "completion_tokens": 168,
+      "llm_calls": 2,
+      "latency_ms": 3862.4
+    },
+    {
+      "id": "q19",
+      "question": "Which request IDs hit db.pool.exhausted errors in payment-service?",
+      "type": "logs",
+      "expected_sources": [
+        "logs/payment-service.log"
+      ],
+      "retrieved_sources": [
+        "logs/payment-service.log",
+        "incidents/payment-pool-exhaustion.md",
+        "incidents/payment-pool-exhaustion.md",
+        "postmortems/payment-pool-exhaustion.md",
+        "src/db/pool.py"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The request IDs that hit db.pool.exhausted errors in payment-service are req-7f3a91 and req-81c4e2. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "logs/payment-service.log"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1499,
+      "completion_tokens": 35,
+      "llm_calls": 1,
+      "latency_ms": 1689.1
+    },
+    {
+      "id": "q20",
+      "question": "How long did payment-service requests wait for a database connection before failing?",
+      "type": "logs",
+      "expected_sources": [
+        "logs/payment-service.log",
+        "src/db/pool.py",
+        "incidents/payment-pool-exhaustion.md"
+      ],
+      "retrieved_sources": [
+        "incidents/payment-pool-exhaustion.md",
+        "runbooks/payment-service.md",
+        "postmortems/payment-pool-exhaustion.md",
+        "incidents/payment-pool-exhaustion.md",
+        "logs/payment-service.log"
+      ],
+      "retrieval_recall": 0.6666666666666666,
+      "retrieval_precision": 0.5,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "[n] According to the logs, payment-service requests waited for 5 seconds (wait_ms=5000ms) for a database connection before failing. [5]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "logs/payment-service.log"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1413,
+      "completion_tokens": 34,
+      "llm_calls": 1,
+      "latency_ms": 1232.7
+    },
+    {
+      "id": "q21",
+      "question": "Which module creates the payment-service database connection pool?",
+      "type": "code",
+      "expected_sources": [
+        "src/db/pool.py"
+      ],
+      "retrieved_sources": [
+        "src/db/pool.py",
+        "incidents/payment-pool-exhaustion.md",
+        "docs/database.md",
+        "postmortems/payment-pool-exhaustion.md",
+        "runbooks/payment-service.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The `create_pool` function in the `db.pool` module creates the payment-service database connection pool. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/db/pool.py"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "code",
+      "prompt_tokens": 1297,
+      "completion_tokens": 25,
+      "llm_calls": 1,
+      "latency_ms": 1547.9
+    },
+    {
+      "id": "q22",
+      "question": "What exception is raised when no database connection becomes free in payment-service?",
+      "type": "code",
+      "expected_sources": [
+        "src/db/pool.py"
+      ],
+      "retrieved_sources": [
+        "incidents/payment-pool-exhaustion.md",
+        "runbooks/payment-service.md",
+        "src/db/pool.py",
+        "postmortems/payment-pool-exhaustion.md",
+        "logs/payment-service.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 0.3333333333333333,
+      "hit": true,
+      "answer": "The exception raised when no database connection becomes free in payment-service is `PoolExhaustedError` [3].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/db/pool.py"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "logs",
+      "prompt_tokens": 1451,
+      "completion_tokens": 24,
+      "llm_calls": 1,
+      "latency_ms": 1024.8
+    },
+    {
+      "id": "q23",
+      "question": "What is the acquire timeout for the payment-service connection pool?",
+      "type": "code",
+      "expected_sources": [
+        "src/db/pool.py",
+        "config/payment-service.yaml"
+      ],
+      "retrieved_sources": [
+        "src/db/pool.py",
+        "incidents/payment-pool-exhaustion.md",
+        "postmortems/payment-pool-exhaustion.md",
+        "config/payment-service.yaml",
+        "docs/database.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.4,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The acquire timeout for the payment-service connection pool is 5 seconds, as specified in the `ACQUIRE_TIMEOUT_SECONDS` constant in `src/db/pool.py` [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/db/pool.py"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1247,
+      "completion_tokens": 37,
+      "llm_calls": 1,
+      "latency_ms": 1111.7
+    },
+    {
+      "id": "q24",
+      "question": "How is the database connection pool size calculated?",
+      "type": "docs",
+      "expected_sources": [
+        "docs/database.md"
+      ],
+      "retrieved_sources": [
+        "docs/database.md",
+        "src/db/pool.py",
+        "src/db/pool.py",
+        "postmortems/payment-pool-exhaustion.md",
+        "docs/database.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.3333333333333333,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The database connection pool size is calculated as `(max_connections - reserved) / total_replicas`. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "docs/database.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1122,
+      "completion_tokens": 23,
+      "llm_calls": 1,
+      "latency_ms": 1334.3
+    },
+    {
+      "id": "q25",
+      "question": "Why is DB_POOL_SIZE set to 20 for payment-service?",
+      "type": "docs",
+      "expected_sources": [
+        "docs/database.md",
+        "config/payment-service.yaml"
+      ],
+      "retrieved_sources": [
+        "src/db/pool.py",
+        "logs/payment-service.log",
+        "docs/database.md",
+        "incidents/payment-pool-exhaustion.md",
+        "docs/database.md"
+      ],
+      "retrieval_recall": 0.5,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 0.3333333333333333,
+      "hit": true,
+      "answer": "According to [3], `DB_POOL_SIZE` is set to 20 for payment-service because it is calculated as `(max_connections - reserved) / total_replicas`. The maximum connections are 200, and 20 connections are reserved for migrations, admin sessions, and monitoring. With 6 replicas, the total number of connections is `(200 - 20) / 9 = 20`. [5]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "docs/database.md",
+        "docs/database.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1357,
+      "completion_tokens": 84,
+      "llm_calls": 1,
+      "latency_ms": 2209.9
+    },
+    {
+      "id": "q26",
+      "question": "What is PostgreSQL max_connections set to on the shared cluster?",
+      "type": "docs",
+      "expected_sources": [
+        "docs/database.md"
+      ],
+      "retrieved_sources": [
+        "docs/database.md",
+        "docs/database.md",
+        "src/db/pool.py",
+        "src/db/pool.py",
+        "runbooks/payment-service.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.3333333333333333,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to [1], PostgreSQL max_connections is set to 200 on the shared cluster.",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "docs/database.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 2070,
+      "completion_tokens": 23,
+      "llm_calls": 2,
+      "latency_ms": 992.3
+    },
+    {
+      "id": "q27",
+      "question": "How are database connections shared between requests?",
+      "type": "docs",
+      "expected_sources": [
+        "docs/database.md",
+        "src/db/pool.py"
+      ],
+      "retrieved_sources": [
+        "docs/database.md",
+        "src/db/pool.py",
+        "docs/database.md",
+        "logs/api-gateway/2026-08-09-120.log",
+        "logs/api-gateway/2026-08-05-480.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.5,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "Database connections are shared between requests by borrowing a connection with `async with connection():` and must give it back quickly. This is done to prevent holding a connection while calling another service, as stated in [2].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/db/pool.py"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1443,
+      "completion_tokens": 44,
+      "llm_calls": 1,
+      "latency_ms": 1364.8
+    },
+    {
+      "id": "q28",
+      "question": "What is the request timeout for payment-service?",
+      "type": "config",
+      "expected_sources": [
+        "config/payment-service.yaml"
+      ],
+      "retrieved_sources": [
+        "config/payment-service.yaml",
+        "config/retries.yaml",
+        "incidents/checkout-timeout.md",
+        "incidents/payment-pool-exhaustion.md",
+        "logs/payment-service.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The request timeout for payment-service is 3000ms, as specified in the config/payment-service.yaml [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "config/payment-service.yaml"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1267,
+      "completion_tokens": 24,
+      "llm_calls": 1,
+      "latency_ms": 1109.2
+    },
+    {
+      "id": "q29",
+      "question": "How many replicas does payment-service run?",
+      "type": "config",
+      "expected_sources": [
+        "config/payment-service.yaml",
+        "docs/database.md",
+        "incidents/payment-pool-exhaustion.md"
+      ],
+      "retrieved_sources": [
+        "docs/database.md",
+        "incidents/payment-pool-exhaustion.md",
+        "config/payment-service.yaml",
+        "logs/payment-service.log",
+        "src/payment-service/handler_519.py"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.6,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to [1], payment-service runs 6 replicas.",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "docs/database.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1098,
+      "completion_tokens": 13,
+      "llm_calls": 1,
+      "latency_ms": 845.2
+    },
+    {
+      "id": "q30",
+      "question": "Where is retry backoff configured for payment-service outbound calls?",
+      "type": "config",
+      "expected_sources": [
+        "config/retries.yaml"
+      ],
+      "retrieved_sources": [
+        "config/retries.yaml",
+        "runbooks/payment-service.md",
+        "incidents/payment-pool-exhaustion.md",
+        "config/payment-service.yaml",
+        "src/payment-service/handler_819.py"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The retry backoff policy for payment-service outbound calls is configured in the `config/retries.yaml` file, specifically in the `retries` section [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "config/retries.yaml"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "code",
+      "prompt_tokens": 915,
+      "completion_tokens": 34,
+      "llm_calls": 1,
+      "latency_ms": 1419.5
+    },
+    {
+      "id": "q31",
+      "question": "What is the maximum number of retry attempts for payment-service outbound calls?",
+      "type": "config",
+      "expected_sources": [
+        "config/retries.yaml"
+      ],
+      "retrieved_sources": [
+        "config/retries.yaml",
+        "incidents/payment-pool-exhaustion.md",
+        "runbooks/payment-service.md",
+        "config/payment-service.yaml",
+        "logs/payment-service.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The maximum number of retry attempts for payment-service outbound calls is 4, as stated in the config/retries.yaml file [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "config/retries.yaml"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1183,
+      "completion_tokens": 28,
+      "llm_calls": 1,
+      "latency_ms": 1223.4
+    },
+    {
+      "id": "q32",
+      "question": "How does payment-service space out retries?",
+      "type": "config",
+      "expected_sources": [
+        "config/retries.yaml"
+      ],
+      "retrieved_sources": [
+        "config/retries.yaml",
+        "runbooks/payment-service.md",
+        "src/payment-service/handler_69.py",
+        "src/payment-service/handler_519.py",
+        "src/payment-service/handler_624.py"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to the config/retries.yaml file, payment-service space out retries using an exponential backoff policy with full jitter [1]. The delay is calculated as `delay = random(0, min(max_backoff, initial * multiplier^attempt))`, where `initial` is 200ms, `multiplier` is 2.0, and `max_backoff` is 5000ms.",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "config/retries.yaml"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 726,
+      "completion_tokens": 82,
+      "llm_calls": 1,
+      "latency_ms": 1810.6
+    },
+    {
+      "id": "q33",
+      "question": "Which HTTP status codes does payment-service retry?",
+      "type": "config",
+      "expected_sources": [
+        "config/retries.yaml"
+      ],
+      "retrieved_sources": [
+        "config/retries.yaml",
+        "logs/payment-service.log",
+        "logs/checkout-service/2026-08-24-415.log",
+        "logs/checkout-service/2026-08-26-865.log",
+        "config/payment-service.yaml"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The payment-service retries requests with HTTP status codes 502, 503, and 504 [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "config/retries.yaml"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1470,
+      "completion_tokens": 22,
+      "llm_calls": 1,
+      "latency_ms": 1202.4
+    },
+    {
+      "id": "q34",
+      "question": "What should on-call check first when payment-service pool wait exceeds 1 second?",
+      "type": "docs",
+      "expected_sources": [
+        "runbooks/payment-service.md"
+      ],
+      "retrieved_sources": [
+        "postmortems/payment-pool-exhaustion.md",
+        "incidents/payment-pool-exhaustion.md",
+        "runbooks/payment-service.md",
+        "src/db/pool.py",
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 0.3333333333333333,
+      "hit": true,
+      "answer": "According to [3], when the pool wait time exceeds 1 second, on-call should check for slow queries or external calls inside transactions before considering a larger pool.",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "runbooks/payment-service.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1162,
+      "completion_tokens": 34,
+      "llm_calls": 1,
+      "latency_ms": 1024.0
+    },
+    {
+      "id": "q35",
+      "question": "What caused checkout requests to stall during INC-2026-1203?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/checkout-timeout.md"
+      ],
+      "retrieved_sources": [
+        "incidents/checkout-timeout.md",
+        "logs/checkout-service/2026-08-02-85.log",
+        "logs/checkout-service/2026-08-15-490.log",
+        "logs/checkout-service/2026-08-18-325.log",
+        "logs/checkout-service/2026-08-20-775.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to the timeline, inventory-service's database failover began at 10:15 UTC, causing checkout p99 latency to rise above 30 seconds at 10:16 UTC. This led to checkout-service thread pool saturation and health checks starting to fail at 10:19 UTC. [1]",
+      "refused": false,
+      "answer_correct": false,
+      "cited_sources": [
+        "incidents/checkout-timeout.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1606,
+      "completion_tokens": 62,
+      "llm_calls": 1,
+      "latency_ms": 2038.0
+    },
+    {
+      "id": "q36",
+      "question": "Which dependency was degraded during the checkout timeout incident?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/checkout-timeout.md"
+      ],
+      "retrieved_sources": [
+        "incidents/checkout-timeout.md",
+        "incidents/checkout-timeout.md",
+        "config/payment-service.yaml",
+        "incidents/payment-pool-exhaustion.md",
+        "logs/checkout-service/2026-08-20-775.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The dependency that was degraded during the checkout timeout incident is the inventory-service database. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/checkout-timeout.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1130,
+      "completion_tokens": 20,
+      "llm_calls": 1,
+      "latency_ms": 1242.8
+    },
+    {
+      "id": "q37",
+      "question": "What timeout was added to inventory reservation calls after the checkout incident?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/checkout-timeout.md"
+      ],
+      "retrieved_sources": [
+        "incidents/checkout-timeout.md",
+        "incidents/checkout-timeout.md",
+        "incidents/inventory-sync-timeouts.md",
+        "incidents/inventory-sync-timeouts.md",
+        "incidents/minor/inventory-service-192.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.3333333333333333,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "A 2 second timeout was added to inventory reservation calls after the checkout incident, as part of the corrective action to prevent similar outages in the future. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/checkout-timeout.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1926,
+      "completion_tokens": 39,
+      "llm_calls": 2,
+      "latency_ms": 1452.8
+    },
+    {
+      "id": "q38",
+      "question": "When does the checkout circuit breaker open?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/checkout-timeout.md"
+      ],
+      "retrieved_sources": [
+        "incidents/checkout-timeout.md",
+        "incidents/checkout-timeout.md",
+        "logs/checkout-service/2026-08-15-490.log",
+        "logs/checkout-service/2026-08-21-1000.log",
+        "logs/checkout-service/2026-08-20-775.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The checkout circuit breaker opens after 5 consecutive failures.",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [],
+      "citation_valid": false,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "docs",
+      "prompt_tokens": 2674,
+      "completion_tokens": 24,
+      "llm_calls": 2,
+      "latency_ms": 1270.4
+    },
+    {
+      "id": "q39",
+      "question": "Why did inventory-sync jobs fail after v3.8.0?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/inventory-sync-timeouts.md"
+      ],
+      "retrieved_sources": [
+        "incidents/inventory-sync-timeouts.md",
+        "incidents/inventory-sync-timeouts.md",
+        "incidents/checkout-timeout.md",
+        "incidents/minor/inventory-service-237.md",
+        "incidents/minor/inventory-service-342.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The inventory-sync jobs failed after v3.8.0 because the warehouse API client timeout was reduced from 30 seconds to 5 seconds, but the warehouse API occasionally required more than 5 seconds to respond during normal peak traffic, causing otherwise successful requests to be terminated early [2].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/inventory-sync-timeouts.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 935,
+      "completion_tokens": 59,
+      "llm_calls": 1,
+      "latency_ms": 1915.2
+    },
+    {
+      "id": "q40",
+      "question": "What was the warehouse API client timeout restored to?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/inventory-sync-timeouts.md"
+      ],
+      "retrieved_sources": [
+        "incidents/inventory-sync-timeouts.md",
+        "incidents/inventory-sync-timeouts.md",
+        "incidents/checkout-timeout.md",
+        "config/payment-service.yaml",
+        "logs/api-gateway/2026-08-09-120.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The warehouse API client timeout was restored to 30 seconds. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/inventory-sync-timeouts.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1223,
+      "completion_tokens": 16,
+      "llm_calls": 1,
+      "latency_ms": 994.7
+    },
+    {
+      "id": "q41",
+      "question": "Why were notifications delayed after notification-service v5.1.0?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/notification-delay.md",
+        "src/notifications/worker.py"
+      ],
+      "retrieved_sources": [
+        "incidents/notification-delay.md",
+        "incidents/notification-delay.md",
+        "src/notification-service/handler_329.py",
+        "src/notification-service/handler_239.py",
+        "src/notification-service/handler_119.py"
+      ],
+      "retrieval_recall": 0.5,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The notification-service v5.1.0 deployment changed the notification worker batch size from 100 messages to 25 messages, causing the workers to process messages more slowly than they were being produced, resulting in a backlog in the Redis queue [2].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/notification-delay.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 823,
+      "completion_tokens": 51,
+      "llm_calls": 1,
+      "latency_ms": 1846.5
+    },
+    {
+      "id": "q42",
+      "question": "Which environment variable controls the notification worker batch size?",
+      "type": "code",
+      "expected_sources": [
+        "src/notifications/worker.py"
+      ],
+      "retrieved_sources": [
+        "src/notifications/worker.py",
+        "incidents/notification-delay.md",
+        "src/notification-service/handler_299.py",
+        "src/notification-service/handler_989.py",
+        "src/notification-service/handler_374.py"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The notification worker batch size is controlled by the environment variable \"NOTIFICATION_BATCH_SIZE\". [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/notifications/worker.py"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 740,
+      "completion_tokens": 21,
+      "llm_calls": 1,
+      "latency_ms": 879.1
+    },
+    {
+      "id": "q43",
+      "question": "How do I measure the backlog of a Redis worker queue?",
+      "type": "docs",
+      "expected_sources": [
+        "runbooks/redis-queue-backlog.md"
+      ],
+      "retrieved_sources": [
+        "runbooks/redis-queue-backlog.md",
+        "incidents/notification-delay.md",
+        "src/notifications/worker.py",
+        "incidents/image-processing-backlog.md",
+        "docs/adr/reporting-service-788.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to the Context block, to measure the backlog of a Redis worker queue, you need to run the following command: `redis-cli LLEN <queue>`. This command should be run twice, 60 seconds apart, as stated in [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "runbooks/redis-queue-backlog.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 831,
+      "completion_tokens": 52,
+      "llm_calls": 1,
+      "latency_ms": 1795.5
+    },
+    {
+      "id": "q44",
+      "question": "At what Redis memory usage should we alert?",
+      "type": "docs",
+      "expected_sources": [
+        "runbooks/redis-queue-backlog.md"
+      ],
+      "retrieved_sources": [
+        "runbooks/redis-queue-backlog.md",
+        "docs/adr/reporting-service-248.md",
+        "docs/adr/reporting-service-113.md",
+        "docs/adr/reporting-service-593.md",
+        "docs/adr/reporting-service-353.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to the Context block, we should alert if `used_memory` exceeds 75% of `maxmemory` [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "runbooks/redis-queue-backlog.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 658,
+      "completion_tokens": 27,
+      "llm_calls": 1,
+      "latency_ms": 730.9
+    },
+    {
+      "id": "q45",
+      "question": "Why did image-processing jobs pile up after version 2.6.0?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/image-processing-backlog.md",
+        "config/image-processing.yaml"
+      ],
+      "retrieved_sources": [
+        "incidents/image-processing-backlog.md",
+        "incidents/image-processing-backlog.md",
+        "config/image-processing.yaml",
+        "runbooks/redis-queue-backlog.md",
+        "incidents/inventory-sync-timeouts.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.5,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The image-processing jobs piled up after version 2.6.0 because the deployment reduced processing capacity even though the number of worker instances remained unchanged. The previous worker configuration allowed 32 concurrent jobs per worker, but version 2.6.0 changed the worker concurrency value to 8. This reduction in concurrency resulted in the queue depth increasing and processing latency exceeding the alert threshold. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/image-processing-backlog.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1012,
+      "completion_tokens": 81,
+      "llm_calls": 1,
+      "latency_ms": 2219.6
+    },
+    {
+      "id": "q46",
+      "question": "What is the worker concurrency for image-processing?",
+      "type": "config",
+      "expected_sources": [
+        "config/image-processing.yaml",
+        "incidents/image-processing-backlog.md"
+      ],
+      "retrieved_sources": [
+        "incidents/image-processing-backlog.md",
+        "incidents/image-processing-backlog.md",
+        "config/image-processing.yaml",
+        "runbooks/redis-queue-backlog.md",
+        "deployments/release-notes.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.5,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The worker concurrency for image-processing was previously set to 32 [3], but was changed to 8 in version 2.6.0 [5].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "config/image-processing.yaml",
+        "deployments/release-notes.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 0.5,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1016,
+      "completion_tokens": 33,
+      "llm_calls": 1,
+      "latency_ms": 828.1
+    },
+    {
+      "id": "q47",
+      "question": "What made search-service slow after v7.4.0?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/search-latency.md"
+      ],
+      "retrieved_sources": [
+        "incidents/search-latency.md",
+        "logs/checkout-service/2026-08-27-250.log",
+        "logs/recommendation-engine/2026-08-08-455.log",
+        "logs/checkout-service/2026-08-20-775.log",
+        "logs/recommendation-engine/2026-08-06-845.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to the timeline, a sequential scan was identified as the query execution plan [3], and a missing index was identified [3].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "logs/recommendation-engine/2026-08-08-455.log"
+      ],
+      "citation_valid": true,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "docs",
+      "prompt_tokens": 1453,
+      "completion_tokens": 28,
+      "llm_calls": 1,
+      "latency_ms": 1412.9
+    },
+    {
+      "id": "q48",
+      "question": "Which index fixed the search-service latency incident?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/search-latency.md"
+      ],
+      "retrieved_sources": [
+        "incidents/search-latency.md",
+        "incidents/search-latency.md",
+        "runbooks/payment-service.md",
+        "logs/checkout-service/2026-08-20-775.log",
+        "logs/recommendation-engine/2026-08-06-845.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to the Context, a composite index on `tenant_id` and `created_at` was created, which fixed the search-service latency incident. [2]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/search-latency.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1166,
+      "completion_tokens": 33,
+      "llm_calls": 1,
+      "latency_ms": 1478.9
+    },
+    {
+      "id": "q49",
+      "question": "How high did search p95 latency get during INC-2026-5086?",
+      "type": "incident",
+      "expected_sources": [
+        "incidents/search-latency.md"
+      ],
+      "retrieved_sources": [
+        "incidents/search-latency.md",
+        "incidents/search-latency.md",
+        "runbooks/payment-service.md",
+        "logs/api-gateway/2026-08-09-120.log",
+        "logs/recommendation-engine/2026-08-25-500.log"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.25,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "Search p95 latency increased from 180 ms to 2.4 seconds during INC-2026-5086. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "incidents/search-latency.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 1188,
+      "completion_tokens": 28,
+      "llm_calls": 1,
+      "latency_ms": 820.7
+    },
+    {
+      "id": "q50",
+      "question": "Where is incident severity normalized?",
+      "type": "code",
+      "expected_sources": [
+        "src/incidents/severity.py"
+      ],
+      "retrieved_sources": [
+        "src/incidents/severity.py",
+        "incidents/auth-certificate-expiry.md",
+        "incidents/image-processing-backlog.md",
+        "incidents/notification-delay.md",
+        "incidents/search-latency.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The incident severity is normalized in the `normalize_severity` function, which is defined in the `src/incidents/severity.py` file [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/incidents/severity.py"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1447,
+      "completion_tokens": 32,
+      "llm_calls": 1,
+      "latency_ms": 1533.1
+    },
+    {
+      "id": "q51",
+      "question": "What severity does an unknown severity value map to?",
+      "type": "code",
+      "expected_sources": [
+        "src/incidents/severity.py"
+      ],
+      "retrieved_sources": [
+        "src/incidents/severity.py",
+        "incidents/minor/catalog-service-2.md",
+        "incidents/inventory-sync-timeouts.md",
+        "incidents/minor/feature-flags-577.md",
+        "incidents/minor/feature-flags-772.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to the `normalize_severity` function, an unknown severity value maps to `SEV-3` [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/incidents/severity.py"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 962,
+      "completion_tokens": 26,
+      "llm_calls": 1,
+      "latency_ms": 766.5
+    },
+    {
+      "id": "q52",
+      "question": "Where should a new severity alias such as urgent be added?",
+      "type": "code",
+      "expected_sources": [
+        "src/incidents/severity.py"
+      ],
+      "retrieved_sources": [
+        "src/incidents/severity.py",
+        "runbooks/certificate-rotation.md",
+        "deployments/user-profile/v1.751.md",
+        "incidents/minor/feature-flags-712.md",
+        "deployments/auth-service/v1.716.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "According to the Context, new severity aliases should be added to SEVERITY_ALIASES [1].",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/incidents/severity.py"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 948,
+      "completion_tokens": 23,
+      "llm_calls": 1,
+      "latency_ms": 914.3
+    },
+    {
+      "id": "q53",
+      "question": "What does the readiness endpoint check?",
+      "type": "code",
+      "expected_sources": [
+        "src/api/health.py"
+      ],
+      "retrieved_sources": [
+        "src/api/health.py",
+        "deployments/auth-service/v1.911.md",
+        "runbooks/certificate-rotation.md",
+        "incidents/checkout-timeout.md",
+        "deployments/auth-service/v1.551.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The readiness endpoint checks PostgreSQL and Redis. [1]",
+      "refused": false,
+      "answer_correct": true,
+      "cited_sources": [
+        "src/api/health.py"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "docs",
+      "prompt_tokens": 990,
+      "completion_tokens": 12,
+      "llm_calls": 1,
+      "latency_ms": 767.0
+    },
+    {
+      "id": "q54",
+      "question": "Which releases were rolled back in September and October 2026?",
+      "type": "docs",
+      "expected_sources": [
+        "deployments/release-notes.md"
+      ],
+      "retrieved_sources": [
+        "deployments/release-notes.md",
+        "deployments/analytics-pipeline/v1.591.md",
+        "logs/api-gateway/2026-08-09-120.log",
+        "deployments/analytics-pipeline/v1.906.md",
+        "postmortems/payment-pool-exhaustion.md"
+      ],
+      "retrieval_recall": 1.0,
+      "retrieval_precision": 0.2,
+      "reciprocal_rank": 1.0,
+      "hit": true,
+      "answer": "The payment-service was rolled back to v2.13.4 on 2026-09-22 [1].",
+      "refused": false,
+      "answer_correct": false,
+      "cited_sources": [
+        "deployments/release-notes.md"
+      ],
+      "citation_valid": true,
+      "citation_precision": 1.0,
+      "citation_accurate": true,
+      "route": "incident",
+      "prompt_tokens": 1260,
+      "completion_tokens": 25,
+      "llm_calls": 1,
+      "latency_ms": 1045.1
+    },
+    {
+      "id": "q55",
+      "question": "What is the parental leave policy for engineers?",
+      "type": "unanswerable",
+      "expected_sources": [],
+      "retrieved_sources": [
+        "incidents/minor/catalog-service-512.md",
+        "logs/recommendation-engine/2026-08-07-230.log",
+        "incidents/minor/catalog-service-422.md",
+        "logs/recommendation-engine/2026-08-08-35.log",
+        "incidents/minor/inventory-service-42.md"
+      ],
+      "retrieval_recall": 0.0,
+      "retrieval_precision": 0.0,
+      "reciprocal_rank": 0.0,
+      "hit": false,
+      "answer": "I don't know - nothing relevant was found in the indexed sources.",
+      "refused": true,
+      "answer_correct": true,
+      "cited_sources": [],
+      "citation_valid": true,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "docs",
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "llm_calls": 0,
+      "latency_ms": 47.1
+    },
+    {
+      "id": "q56",
+      "question": "How do I configure Kafka consumer group rebalancing?",
+      "type": "unanswerable",
+      "expected_sources": [],
+      "retrieved_sources": [
+        "config/retries.yaml",
+        "incidents/inventory-sync-timeouts.md",
+        "incidents/image-processing-backlog.md",
+        "docs/adr/reporting-service-128.md",
+        "docs/adr/reporting-service-308.md"
+      ],
+      "retrieval_recall": 0.0,
+      "retrieval_precision": 0.0,
+      "reciprocal_rank": 0.0,
+      "hit": false,
+      "answer": "I don't know.",
+      "refused": true,
+      "answer_correct": true,
+      "cited_sources": [],
+      "citation_valid": true,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "docs",
+      "prompt_tokens": 931,
+      "completion_tokens": 6,
+      "llm_calls": 1,
+      "latency_ms": 638.4
+    },
+    {
+      "id": "q57",
+      "question": "What is the capital of Australia?",
+      "type": "unanswerable",
+      "expected_sources": [],
+      "retrieved_sources": [
+        "logs/api-gateway/2026-08-20-75.log",
+        "logs/api-gateway/2026-08-24-135.log",
+        "logs/api-gateway/2026-08-25-780.log",
+        "logs/api-gateway/2026-08-01-420.log",
+        "logs/api-gateway/2026-08-04-675.log"
+      ],
+      "retrieval_recall": 0.0,
+      "retrieval_precision": 0.0,
+      "reciprocal_rank": 0.0,
+      "hit": false,
+      "answer": "I don't know - nothing relevant was found in the indexed sources.",
+      "refused": true,
+      "answer_correct": true,
+      "cited_sources": [],
+      "citation_valid": true,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "docs",
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "llm_calls": 0,
+      "latency_ms": 30.2
+    },
+    {
+      "id": "q58",
+      "question": "Write me a poem about the ocean.",
+      "type": "unanswerable",
+      "expected_sources": [],
+      "retrieved_sources": [
+        "src/payment-service/handler_1014.py",
+        "src/notification-service/handler_359.py",
+        "src/notification-service/handler_854.py",
+        "logs/api-gateway/2026-08-10-345.log",
+        "src/notification-service/handler_749.py"
+      ],
+      "retrieval_recall": 0.0,
+      "retrieval_precision": 0.0,
+      "reciprocal_rank": 0.0,
+      "hit": false,
+      "answer": "I don't know - nothing relevant was found in the indexed sources.",
+      "refused": true,
+      "answer_correct": true,
+      "cited_sources": [],
+      "citation_valid": true,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "docs",
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "llm_calls": 0,
+      "latency_ms": 27.8
+    },
+    {
+      "id": "q59",
+      "question": "What GPU instance type do we use to train recommendation models?",
+      "type": "unanswerable",
+      "expected_sources": [],
+      "retrieved_sources": [
+        "logs/recommendation-engine/2026-08-01-140.log",
+        "logs/recommendation-engine/2026-08-07-650.log",
+        "logs/recommendation-engine/2026-08-06-425.log",
+        "logs/recommendation-engine/2026-08-05-620.log",
+        "logs/recommendation-engine/2026-08-12-95.log"
+      ],
+      "retrieval_recall": 0.0,
+      "retrieval_precision": 0.0,
+      "reciprocal_rank": 0.0,
+      "hit": false,
+      "answer": "I don't know.",
+      "refused": true,
+      "answer_correct": true,
+      "cited_sources": [],
+      "citation_valid": true,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "docs",
+      "prompt_tokens": 1678,
+      "completion_tokens": 6,
+      "llm_calls": 1,
+      "latency_ms": 1051.5
+    },
+    {
+      "id": "q60",
+      "question": "Who won the 2018 football world cup?",
+      "type": "unanswerable",
+      "expected_sources": [],
+      "retrieved_sources": [
+        "src/payment-service/handler_1014.py",
+        "src/payment-service/handler_744.py",
+        "src/payment-service/handler_834.py",
+        "src/payment-service/handler_954.py",
+        "src/payment-service/handler_984.py"
+      ],
+      "retrieval_recall": 0.0,
+      "retrieval_precision": 0.0,
+      "reciprocal_rank": 0.0,
+      "hit": false,
+      "answer": "I don't know - nothing relevant was found in the indexed sources.",
+      "refused": true,
+      "answer_correct": true,
+      "cited_sources": [],
+      "citation_valid": true,
+      "citation_precision": 0.0,
+      "citation_accurate": false,
+      "route": "docs",
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "llm_calls": 0,
+      "latency_ms": 30.0
+    }
+  ]
+}

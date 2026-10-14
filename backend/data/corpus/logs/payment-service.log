@@ -1,0 +1,9 @@
+2026-09-22T14:06:11Z INFO  deploy  service=payment-service version=2.14.0 replicas=6 status=rollout_complete
+2026-09-22T14:08:42Z INFO  http    request_id=req-5c21aa route=POST /payments status=201 duration_ms=1912
+2026-09-22T14:10:03Z WARN  db.pool request_id=req-6d0b19 wait_ms=3120 in_use=19 pool_size=20
+2026-09-22T14:10:17Z ERROR db.pool.exhausted request_id=req-7f3a91 waited=5000ms in_use=20 pool_size=20 version=2.14.0
+2026-09-22T14:10:17Z ERROR http    request_id=req-7f3a91 route=POST /payments status=503 error=PoolExhaustedError
+2026-09-22T14:10:19Z ERROR db.pool.exhausted request_id=req-81c4e2 waited=5000ms in_use=20 pool_size=20 version=2.14.0
+2026-09-22T14:12:55Z WARN  fraud   request_id=req-9a7713 fraud_check_ms=1840 held_db_connection=true
+2026-09-22T14:26:02Z INFO  deploy  service=payment-service version=2.13.4 action=rollback initiated_by=oncall
+2026-09-22T14:31:40Z INFO  db.pool in_use=4 pool_size=20 wait_ms=0

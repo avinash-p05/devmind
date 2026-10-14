@@ -1,0 +1,11 @@
+service: payment-service
+replicas: 6
+http:
+  port: 8080
+  request_timeout_ms: 3000   # whole-request deadline enforced by the server
+database:
+  pool_size: 20              # DB_POOL_SIZE, see docs/database.md
+  acquire_timeout_ms: 5000
+fraud_check:
+  base_url: https://fraud.internal/api/v2
+  timeout_ms: 2500

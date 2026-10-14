@@ -1,0 +1,12 @@
+# Retry policy for payment-service outbound calls (card processor, fraud-check).
+# Exponential backoff with full jitter: delay = random(0, min(max_backoff, initial * multiplier^attempt))
+retries:
+  max_attempts: 4
+  initial_backoff_ms: 200
+  backoff_multiplier: 2.0
+  max_backoff_ms: 5000
+  jitter: full
+  retry_on_status: [502, 503, 504]
+  retry_on_timeout: true
+  # Never retry a request that may already have charged the customer.
+  idempotency_key_required: true
