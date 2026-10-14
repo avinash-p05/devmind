@@ -1,39 +1,71 @@
-from dataclasses import dataclass
+import re
+from collections.abc import Sequence
+
+RRF_K = 60  # standard Reciprocal Rank Fusion constant
+
+_TOKEN = re.compile(r"[a-z0-9]+")
+STOPWORDS = frozenset(
+    "a an and are as at be by did do does for from how in is it of on or should the this "
+    "to was what when where which who why with".split()
+)
 
 
-@dataclass(frozen=True)
-class RankedCandidate:
-    chunk_id: str
-    score: float
-    retrieval_method: str
+def reciprocal_rank_fusion[T](rankings: Sequence[Sequence[T]], k: int = RRF_K) -> dict[T, float]:
+    """score(item) = sum over rankings of 1 / (k + rank).
+
+    Uses only rank positions, so cosine similarities and BM25-style scores, which live on
+    different scales, never have to be compared. An item ranked high by *either* retriever
+    scores well; an item ranked high by both scores best.
+    """
+    if k <= 0:
+        raise ValueError("k must be positive")
+    scores: dict[T, float] = {}
+    for ranking in rankings:
+        for rank, item in enumerate(ranking, start=1):
+            scores[item] = scores.get(item, 0.0) + 1.0 / (k + rank)
+    return scores
 
 
-def combine_scores(semantic_score: float | None, keyword_score: float | None) -> float:
-    """Blend normalized retrieval scores while preserving single-source results."""
-    if semantic_score is None:
-        return max(0.0, min(1.0, keyword_score or 0.0))
-    if keyword_score is None:
-        return max(0.0, min(1.0, semantic_score))
-    return max(0.0, min(1.0, semantic_score * 0.65 + keyword_score * 0.35))
+def terms(text: str) -> set[str]:
+    # A 5-character prefix is a cheap stemmer: "normalized" and "normalization" both match.
+    return {
+        token[:5]
+        for token in _TOKEN.findall(text.lower())
+        if len(token) > 2 and token not in STOPWORDS
+    }
 
 
-def reciprocal_rank_fusion(
-    semantic_rank: int | None,
-    keyword_rank: int | None,
+def term_coverage(query: str, text: str) -> float:
+    """Fraction of the distinct query terms that appear in the text."""
+    query_terms = terms(query)
+    if not query_terms:
+        return 0.0
+    return len(query_terms & terms(text)) / len(query_terms)
+
+
+def rerank[T](
+    query: str,
+    candidates: Sequence[tuple[T, str, float]],
     *,
-    semantic_weight: float = 0.65,
-    keyword_weight: float = 0.35,
-    rank_constant: int = 60,
-) -> float:
-    """Combine independent retrieval rankings without comparing score scales."""
-    if rank_constant <= 0:
-        raise ValueError("rank_constant must be positive")
-    if semantic_weight < 0 or keyword_weight < 0:
-        raise ValueError("retrieval weights must be non-negative")
+    coverage_weight: float = 0.5,
+) -> list[tuple[T, float]]:
+    """Second-stage rerank of fused (item, text, fusion_score) candidates.
 
-    score = 0.0
-    if semantic_rank is not None:
-        score += semantic_weight / (rank_constant + semantic_rank)
-    if keyword_rank is not None:
-        score += keyword_weight / (rank_constant + keyword_rank)
-    return score
+    RRF only sees rank positions. This stage reads the candidate text and rewards chunks
+    that cover more of the question, so a chunk one retriever ranked low but that matches
+    the whole question can move up.
+    """
+    if not 0 <= coverage_weight <= 1:
+        raise ValueError("coverage_weight must be between 0 and 1")
+    if not candidates:
+        return []
+    top_fusion = max(score for _, _, score in candidates) or 1.0
+    scored = [
+        (
+            item,
+            (1 - coverage_weight) * (fusion / top_fusion)
+            + coverage_weight * term_coverage(query, text),
+        )
+        for item, text, fusion in candidates
+    ]
+    return sorted(scored, key=lambda pair: pair[1], reverse=True)
